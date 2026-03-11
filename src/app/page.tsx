@@ -1,94 +1,72 @@
 "use client";
 
 import Link from "next/link";
-import { CheckCircle2, Circle, Clock, User } from "lucide-react";
 import { useRoomStore } from "@/store/useRoomStore";
 
 export default function Home() {
   const rooms = useRoomStore((state) => state.rooms);
 
-  const roomStatuses = [
-    {
-      id: "before-cleaning",
-      label: "清掃前",
-      enLabel: "BEFORE",
-      rooms: rooms.filter((r) => r.status === "before-cleaning").map((r) => r.id),
-      color: "bg-gray-200 text-gray-600",
-      dot: "bg-gray-400",
-      icon: <Circle className="w-4 h-4" strokeWidth={2.5} />
-    },
-    {
-      id: "cleaning",
-      label: "清掃中",
-      enLabel: "CLEANING",
-      rooms: rooms.filter((r) => r.status === "cleaning").map((r) => r.id),
-      color: "bg-[#e6f0fa] text-[#5b8ab5]",
-      dot: "bg-[#7aa0c0]",
-      icon: <Clock className="w-4 h-4" strokeWidth={2.5} />
-    },
-    {
-      id: "cleaned",
-      label: "清掃済み",
-      enLabel: "CLEANED",
-      rooms: rooms.filter((r) => r.status === "cleaned").map((r) => r.id),
-      color: "bg-[#e8efe9] text-[#6d8a74]",
-      dot: "bg-[#8fa996]",
-      icon: <CheckCircle2 className="w-4 h-4" strokeWidth={2.5} />
-    },
-    {
-      id: "occupied",
-      label: "利用中",
-      enLabel: "OCCUPIED",
-      rooms: rooms.filter((r) => r.status === "occupied").map((r) => r.id),
-      color: "bg-[#fbeaea] text-[#b86b6b]",
-      dot: "bg-[#c58080]",
-      icon: <User className="w-4 h-4" strokeWidth={2.5} />
-    }
-  ];
+  const today = new Date();
+  const dateString = `${today.getMonth() + 1}月${today.getDate()}日`;
+
+  const statusConfig: Record<string, { label: string; bg: string }> = {
+    "before-cleaning": { label: "清掃前", bg: "bg-[#595959] text-white" },
+    "cleaning": { label: "清掃中", bg: "bg-[#2f667c] text-white" },
+    "cleaned": { label: "清掃済み", bg: "bg-[#316c39] text-white" },
+    "occupied": { label: "利用中", bg: "bg-[#501a61] text-white" },
+  };
+
+  const statusOrder = ["before-cleaning", "cleaning", "cleaned", "occupied"];
 
   return (
-    <div className="p-6 safe-top pb-24 min-h-screen bg-[#fdfdfd] pt-8">
-      {/* Status List Bento */}
-      <div className="mb-8">
-        <h2 className="text-xs font-bold text-gray-400 mb-4 tracking-widest uppercase">Room Status</h2>
-        
-        <div className="flex flex-col gap-4">
-          {roomStatuses.map((status) => (
-            <div key={status.id} className="bg-[#f2f2f2] rounded-[28px] p-5 flex flex-col">
-              <div className="flex justify-between items-start mb-6">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-xl ${status.color}`}>
-                    {status.icon}
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-black text-base tracking-tight leading-none mb-1">{status.label}</h3>
-                    <p className="text-[9px] font-bold text-gray-400 tracking-widest uppercase">{status.enLabel}</p>
-                  </div>
-                </div>
-                <span className="text-xs font-bold text-gray-400 bg-white px-2.5 py-0.5 rounded-full">{status.rooms.length}</span>
-              </div>
-
-              <div className="flex flex-col gap-2 mt-auto">
-                {status.rooms.map((room) => (
-                  <Link 
-                    key={room} 
-                    href={`/tasks/${room}`} 
-                    className="bg-white px-4 py-3 rounded-2xl border border-gray-100 flex justify-between items-center active:bg-gray-50 transition-colors shadow-sm"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className={`w-2 h-2 rounded-full ${status.dot}`}></span>
-                      <span className="font-bold text-black tracking-tight text-lg">{room}</span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+    <div className="p-4 pb-24 min-h-screen bg-[#f7f7f7] pt-14">
+      {/* Date & Greeting */}
+      <div className="flex flex-col items-center mt-2 mb-10">
+        <p className="text-[#333] tracking-wider mb-2 font-medium text-[16px]">{dateString}</p>
+        <h1 className="text-[22px] font-medium text-black tracking-[0.2em] mb-4">おはようございます</h1>
       </div>
 
+      {/* Room Cards List */}
+      <div className="flex flex-col gap-5 px-1 pb-10 max-w-[500px] mx-auto">
+        {rooms.map((room) => (
+          <Link href={`/tasks/${room.id}`} key={room.id} className="block active:scale-[0.98] transition-transform">
+            <div className="bg-white rounded-[16px] shadow-[0_2px_12px_rgba(0,0,0,0.06)] overflow-hidden px-4 py-5">
+              
+              {/* Segmented Status Bar */}
+              <div className="flex w-full bg-[#f0f0f0] rounded-lg overflow-hidden gap-[1px]">
+                {statusOrder.map((statusKey) => {
+                  const isActive = room.status === statusKey;
+                  const config = statusConfig[statusKey];
+                  return (
+                    <div 
+                      key={statusKey} 
+                      className={`flex-1 py-1.5 text-center text-[11px] font-semibold transition-colors ${
+                        isActive 
+                          ? config.bg 
+                          : "bg-[#e5e5e5] text-[#a3a3a3]"
+                      }`}
+                    >
+                      {statusConfig[statusKey].label}
+                    </div>
+                  );
+                })}
+              </div>
 
-
+              {/* Room Info */}
+              <div className="mt-6 mb-2 text-center flex flex-col items-center">
+                <h2 className="text-[40px] font-light text-[#111111] tracking-tight leading-none mb-3">
+                  Room {room.id}
+                </h2>
+                <div className="flex items-center text-[#aaaaaa] text-[12px] font-semibold uppercase tracking-wider">
+                  <span>IN {room.checkIn || "15:00"}</span>
+                  <span className="mx-1.5 font-normal text-gray-300">/</span>
+                  <span>OUT {room.checkOut || "11:00"}</span>
+                </div>
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }

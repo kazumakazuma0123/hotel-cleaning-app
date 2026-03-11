@@ -6,6 +6,8 @@ type RoomStatus = "before-cleaning" | "cleaning" | "cleaned" | "occupied";
 interface Room {
     id: string;
     status: RoomStatus;
+    checkIn?: string;
+    checkOut?: string;
 }
 
 interface RoomStore {
@@ -17,9 +19,10 @@ export const useRoomStore = create<RoomStore>()(
     persist(
         (set) => ({
             rooms: [
-                { id: "001", status: "cleaning" },
-                { id: "002", status: "before-cleaning" },
-                { id: "005", status: "occupied" },
+                { id: "101", status: "cleaning", checkIn: "15:00", checkOut: "11:00" },
+                { id: "102", status: "cleaned", checkIn: "15:00", checkOut: "12:00" },
+                { id: "001", status: "occupied", checkIn: "14:00", checkOut: "10:00" },
+                { id: "005", status: "before-cleaning", checkIn: "16:00", checkOut: "11:00" },
             ],
             updateRoomStatus: (id, newStatus) =>
                 set((state) => ({
@@ -29,7 +32,7 @@ export const useRoomStore = create<RoomStore>()(
                 })),
         }),
         {
-            name: "hotel-room-storage",
+            name: "hotel-rooms-storage-v2",
         }
     )
 );
