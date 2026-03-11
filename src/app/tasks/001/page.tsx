@@ -50,7 +50,7 @@ export default function RoomChecklist() {
         <div className="bg-[#fdfdfd] min-h-screen pb-32">
             {/* Top App Bar */}
             <div className="bg-[#fdfdfd] sticky top-0 z-40 px-6 h-16 flex items-center justify-between">
-                <Link href="/tasks" className="flex items-center text-black active:opacity-50 transition-opacity -ml-2">
+                <Link href="/" className="flex items-center text-black active:opacity-50 transition-opacity -ml-2">
                     <ChevronLeft className="w-8 h-8" strokeWidth={1.5} />
                 </Link>
                 <span className="font-bold text-black text-lg tracking-tight">
