@@ -1,93 +1,97 @@
-import { CheckCircle2, Circle, Clock } from "lucide-react";
+import { CheckCircle2, Circle } from "lucide-react";
 import Link from "next/link";
 
 export default function TasksIndex() {
     return (
-        <div className="p-4 safe-top pb-24">
-            <header className="mb-6 pt-2">
-                <h1 className="text-2xl font-bold text-gray-900">本日のタスク</h1>
-                <p className="text-sm text-gray-500 mt-1">担当する部屋の清掃状況を管理します。</p>
+        <div className="p-6 safe-top pb-24 min-h-screen bg-[#fdfdfd]">
+            <header className="mb-10 pt-4">
+                <p className="text-sm font-medium text-gray-400 mb-1 tracking-wider">TODAY'S</p>
+                <h1 className="text-3xl font-bold tracking-tight text-black leading-tight">
+                    Tasks
+                </h1>
             </header>
 
-            {/* Stats Summary */}
-            <div className="flex gap-3 mb-6">
-                <div className="flex-1 bg-white p-3 rounded-2xl border border-gray-100 shadow-sm text-center">
-                    <p className="text-gray-500 text-xs font-bold mb-1">未着手</p>
-                    <p className="text-2xl font-bold text-gray-900">8</p>
+            {/* Stats Summary Bento style */}
+            <div className="flex gap-4 mb-10">
+                <div className="flex-1 bg-[#f2f2f2] p-5 rounded-[28px]">
+                    <p className="text-3xl font-bold text-black mb-1">2</p>
+                    <p className="text-xs font-semibold tracking-wide text-gray-500 uppercase">Remaining</p>
                 </div>
-                <div className="flex-1 bg-white p-3 rounded-2xl border border-blue-100 shadow-sm text-center">
-                    <p className="text-blue-500 text-xs font-bold mb-1">清掃中</p>
-                    <p className="text-2xl font-bold text-blue-600">1</p>
-                </div>
-                <div className="flex-1 bg-white p-3 rounded-2xl border border-green-100 shadow-sm text-center">
-                    <p className="text-green-500 text-xs font-bold mb-1">完了</p>
-                    <p className="text-2xl font-bold text-green-600">3</p>
+                <div className="flex-1 bg-[#f2f2f2] p-5 rounded-[28px]">
+                    <p className="text-3xl font-bold text-black mb-1">1</p>
+                    <p className="text-xs font-semibold tracking-wide text-gray-500 uppercase">Done</p>
                 </div>
             </div>
 
             {/* Task List */}
-            <div className="space-y-3">
+            <div className="space-y-4">
+                
                 {/* In Progress Task */}
-                <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 shadow-sm relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
-                    <div className="flex justify-between items-start mb-2">
+                <Link href="/tasks/001" className="block bg-[#f2f2f2] rounded-[32px] p-6 active:bg-gray-200 transition-colors">
+                    <div className="flex justify-between items-start mb-8">
                         <div>
-                            <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded mr-2">清掃中</span>
-                            <span className="text-sm font-bold text-gray-500">スタンダード</span>
+                            <span className="inline-block bg-white text-black text-xs font-bold px-3 py-1.5 rounded-full mb-3 tracking-wide">
+                                IN PROGRESS
+                            </span>
                         </div>
-                        <span className="flex items-center text-xs text-blue-600 font-medium">
-                            <Clock className="w-3 h-3 mr-1" /> 15分経過
+                        <span className="text-xs font-bold text-gray-500 tracking-wider">
+                            STANDARD
                         </span>
                     </div>
-                    <h3 className="text-2xl font-bold text-gray-900 mb-1">204 号室</h3>
-                    <p className="text-xs text-gray-500 mb-3">チェックアウト済 / アーリーイン希望(13:00)</p>
+                    
+                    <h3 className="text-4xl font-bold tracking-tighter text-black mb-2">Room 001</h3>
+                    <p className="text-sm font-medium text-gray-500 mb-6">Checkout · Early In (13:00)</p>
 
-                    <div className="w-full bg-blue-200 rounded-full h-1.5 mb-2">
-                        <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: '45%' }}></div>
+                    <div className="flex items-center justify-between mt-auto">
+                         <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-black animate-pulse"></span>
+                            <span className="text-sm font-bold text-black">Working...</span>
+                        </div>
+                        <span className="text-sm font-bold text-gray-400">45%</span>
                     </div>
-                    <div className="flex justify-between text-xs text-gray-500 mb-4">
-                        <span>進捗</span>
-                        <span>45%</span>
-                    </div>
-
-                    <Link href="/tasks/204" className="block w-full text-center bg-blue-600 text-white font-bold py-2.5 rounded-xl hover:bg-blue-700 active:scale-[0.98] transition-all">
-                        チェックリストを開く
-                    </Link>
-                </div>
+                </Link>
 
                 {/* To Do Task */}
-                <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm relative overflow-hidden opacity-90">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-gray-300"></div>
-                    <div className="flex justify-between items-start mb-2">
+                <div className="bg-[#f2f2f2] rounded-[32px] p-6 opacity-70">
+                    <div className="flex justify-between items-start mb-8">
                         <div>
-                            <span className="bg-gray-100 text-gray-600 text-xs font-bold px-2 py-0.5 rounded mr-2">未着手</span>
-                            <span className="text-sm font-bold text-gray-500">スタンダード</span>
+                            <span className="inline-block bg-white/50 text-gray-500 text-xs font-bold px-3 py-1.5 rounded-full mb-3 tracking-wide">
+                                TO DO
+                            </span>
                         </div>
+                        <span className="text-xs font-bold text-gray-500 tracking-wider">
+                            STANDARD
+                        </span>
                     </div>
-                    <h3 className="text-2xl font-bold text-gray-900 mb-1">205 号室</h3>
-                    <p className="text-xs text-gray-500 mb-3">チェックアウト済</p>
+                    
+                    <h3 className="text-4xl font-bold tracking-tighter text-black mb-2">Room 002</h3>
+                    <p className="text-sm font-medium text-gray-500 mb-6">Checkout</p>
 
-                    <button className="w-full text-center bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl hover:bg-gray-200 active:scale-[0.98] transition-all flex justify-center items-center gap-2">
-                        <Circle className="w-4 h-4 text-gray-400" />
-                        清掃を開始する
+                    <button className="w-full text-center bg-white text-black font-bold py-3.5 rounded-2xl active:scale-[0.98] transition-all flex justify-center items-center gap-2">
+                        <Circle className="w-5 h-5 text-gray-300" />
+                        Start Cleaning
                     </button>
                 </div>
 
                 {/* Done Task */}
-                <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 relative overflow-hidden opacity-75">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-green-400"></div>
-                    <div className="flex justify-between items-start mb-2">
+                <div className="bg-[#f9f9f9] rounded-[32px] p-6">
+                    <div className="flex justify-between items-start mb-8">
                         <div>
-                            <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded mr-2">完了</span>
-                            <span className="text-sm font-bold text-gray-500">スイート</span>
+                            <span className="inline-block bg-[#e8efe9] text-[#6d8a74] text-xs font-bold px-3 py-1.5 rounded-full mb-3 tracking-wide">
+                                DONE
+                            </span>
                         </div>
-                        <span className="flex items-center text-xs text-green-600 font-medium">
-                            11:30 完了
+                        <span className="text-xs font-bold text-gray-400 tracking-wider">
+                            SUITE
                         </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <CheckCircle2 className="w-6 h-6 text-green-500" />
-                        <h3 className="text-2xl font-bold text-gray-500 line-through">301 号室</h3>
+                    
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="text-4xl font-bold tracking-tighter text-gray-400 mb-1">Room 005</h3>
+                            <p className="text-sm font-medium text-gray-400">Completed at 11:30</p>
+                        </div>
+                        <CheckCircle2 className="w-8 h-8 text-[#8fa996]" />
                     </div>
                 </div>
 

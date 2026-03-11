@@ -1,15 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { BottomNav } from "@/components/BottomNav";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
@@ -38,12 +33,14 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 text-gray-900 pb-16`}
+        className={`${inter.variable} font-sans antialiased text-black bg-[#e5e5e5]`}
       >
-        <main className="min-h-screen">
-          {children}
-        </main>
-        <BottomNav />
+        <div className="max-w-[480px] mx-auto bg-[#fdfdfd] min-h-screen relative shadow-2xl overflow-hidden flex flex-col">
+          <main className="flex-1 w-full pb-16">
+            {children}
+          </main>
+          <BottomNav />
+        </div>
       </body>
     </html>
   );

@@ -3,35 +3,27 @@ import { BookOpen, MapPin, ShowerHead, Bed } from "lucide-react";
 
 export default function ManualIndex() {
     return (
-        <div className="p-4 safe-top pb-24">
-            <header className="mb-6 pt-2">
-                <h1 className="text-2xl font-bold text-gray-900">清掃マニュアル</h1>
-                <p className="text-sm text-gray-500 mt-1">部屋タイプや箇所別の清掃手順を確認します。</p>
+        <div className="p-6 safe-top pb-24 min-h-screen bg-[#fdfdfd]">
+            <header className="mb-10 pt-4">
+                <p className="text-sm font-medium text-gray-400 mb-1 tracking-wider">GUIDELINES</p>
+                <h1 className="text-3xl font-bold tracking-tight text-black leading-tight">
+                    Rules
+                </h1>
+                <p className="text-sm font-medium text-gray-500 mt-2">部屋タイプや箇所別の清掃手順を確認します。</p>
             </header>
 
             {/* Room Types */}
-            <section className="mb-8">
-                <h2 className="text-sm font-bold text-gray-500 mb-3 px-1 uppercase tracking-wider">部屋タイプ別（基本手順）</h2>
-                <div className="flex flex-col gap-3">
-                    <Link href="/manual/standard" className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between active:bg-gray-50 transition-colors">
-                        <div className="flex items-center gap-4">
-                            <div className="bg-blue-100 text-blue-600 p-3 rounded-xl">
-                                <BookOpen className="w-5 h-5" />
+            <section className="mb-10">
+                <h2 className="text-xs font-bold text-gray-400 mb-4 tracking-widest uppercase">Room Types</h2>
+                <div className="flex flex-col gap-4">
+                    <Link href="/manual/villa" className="bg-[#f2f2f2] p-6 rounded-[32px] flex items-center justify-between active:bg-gray-200 transition-colors">
+                        <div className="flex items-center gap-5">
+                            <div className="bg-white text-black p-4 rounded-2xl">
+                                <BookOpen className="w-6 h-6" strokeWidth={2} />
                             </div>
                             <div>
-                                <h3 className="font-bold text-gray-900">スタンダードルーム</h3>
-                                <p className="text-xs text-gray-500">標準的な客室の清掃手順（約30分）</p>
-                            </div>
-                        </div>
-                    </Link>
-                    <Link href="/manual/suite" className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between active:bg-gray-50 transition-colors">
-                        <div className="flex items-center gap-4">
-                            <div className="bg-purple-100 text-purple-600 p-3 rounded-xl">
-                                <BookOpen className="w-5 h-5" />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-gray-900">スイートルーム</h3>
-                                <p className="text-xs text-gray-500">広めの客室の清掃手順（約60分）</p>
+                                <h3 className="text-xl font-bold text-black tracking-tight mb-1">Villa</h3>
+                                <p className="text-sm font-medium text-gray-500">標準的な客室の清掃手順</p>
                             </div>
                         </div>
                     </Link>
@@ -40,25 +32,34 @@ export default function ManualIndex() {
 
             {/* Areas */}
             <section>
-                <h2 className="text-sm font-bold text-gray-500 mb-3 px-1 uppercase tracking-wider">箇所別（詳細手順）</h2>
-                <div className="grid grid-cols-2 gap-3">
-                    <Link href="/manual/bathroom" className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center gap-2 active:bg-gray-50 transition-colors">
-                        <div className="bg-cyan-100 text-cyan-600 p-3 rounded-full">
-                            <ShowerHead className="w-6 h-6" />
+                <h2 className="text-xs font-bold text-gray-400 mb-4 tracking-widest uppercase">Areas</h2>
+                <div className="grid grid-cols-2 gap-4">
+                    <Link href="/manual/bathroom" className="bg-[#f2f2f2] p-6 rounded-[28px] flex flex-col items-start gap-4 active:bg-gray-200 transition-colors">
+                        <div className="bg-white text-black p-3 rounded-xl">
+                            <ShowerHead className="w-5 h-5" strokeWidth={2.5} />
                         </div>
-                        <span className="font-medium text-gray-800 text-sm">水回り・浴室</span>
+                        <div>
+                            <span className="font-bold text-black text-sm block tracking-tight">Bathroom</span>
+                            <span className="font-medium text-gray-500 text-xs">水回り・浴室</span>
+                        </div>
                     </Link>
-                    <Link href="/manual/bedding" className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center gap-2 active:bg-gray-50 transition-colors">
-                        <div className="bg-indigo-100 text-indigo-600 p-3 rounded-full">
-                            <Bed className="w-6 h-6" />
+                    <Link href="/manual/bedding" className="bg-[#f2f2f2] p-6 rounded-[28px] flex flex-col items-start gap-4 active:bg-gray-200 transition-colors">
+                        <div className="bg-white text-black p-3 rounded-xl">
+                            <Bed className="w-5 h-5" strokeWidth={2.5} />
                         </div>
-                        <span className="font-medium text-gray-800 text-sm">ベッドメイク</span>
+                        <div>
+                            <span className="font-bold text-black text-sm block tracking-tight">Bedding</span>
+                            <span className="font-medium text-gray-500 text-xs">ベッドメイク</span>
+                        </div>
                     </Link>
-                    <Link href="/manual/amenities" className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center gap-2 active:bg-gray-50 transition-colors">
-                        <div className="bg-rose-100 text-rose-600 p-3 rounded-full">
-                            <MapPin className="w-6 h-6" />
+                    <Link href="/manual/amenities" className="bg-[#f2f2f2] p-6 rounded-[28px] flex flex-col items-start gap-4 active:bg-gray-200 transition-colors">
+                        <div className="bg-white text-black p-3 rounded-xl">
+                            <MapPin className="w-5 h-5" strokeWidth={2.5} />
                         </div>
-                        <span className="font-medium text-gray-800 text-sm">アメニティ補充</span>
+                        <div>
+                            <span className="font-bold text-black text-sm block tracking-tight">Amenities</span>
+                            <span className="font-medium text-gray-500 text-xs">アメニティ補充</span>
+                        </div>
                     </Link>
                 </div>
             </section>
