@@ -128,20 +128,28 @@ export default function RoomTaskPage({ params }: { params: Promise<{ id: string 
 
     if (room.status === "occupied") {
         return (
-            <div className="bg-[#fdfdfd] min-h-screen pb-32">
-                {renderHeader()}
-                <div className="px-6 pt-12 flex flex-col items-center justify-center min-h-[50vh]">
-                    <div className="bg-[#fbeaea] text-[#b86b6b] p-4 rounded-3xl mb-8">
-                        <RefreshCw className="w-12 h-12 mb-2 mx-auto" strokeWidth={1.5} />
+            <div className="bg-white min-h-screen pb-32">
+                <div className="bg-white sticky top-0 z-40 h-16 flex items-center justify-between border-b border-gray-100 px-4">
+                    <Link href="/" className="flex items-center text-black active:opacity-50 transition-opacity w-10">
+                        <ChevronLeft className="w-7 h-7" strokeWidth={1} />
+                    </Link>
+                    <span className="font-light text-gray-500 text-lg tracking-wider">
+                        Room {id}
+                    </span>
+                    <div className="w-10"></div>
+                </div>
+                <div className="px-6 pt-24 flex flex-col items-center justify-center">
+                    <div className="mb-10">
+                        <RefreshCw className="w-20 h-20 text-[#ab978a] mx-auto" strokeWidth={1} />
                     </div>
-                    <h2 className="text-2xl font-bold text-black mb-4 tracking-tight text-center">ステータスの変更</h2>
-                    <p className="text-gray-500 font-medium text-center leading-relaxed mb-12">
+                    <h2 className="text-2xl font-normal text-[#111111] mb-5 tracking-widest text-center">ステータスの変更</h2>
+                    <p className="text-[#a3a3a3] font-light text-[13px] text-center leading-loose mb-16 tracking-widest">
                         お客様がチェックアウトされましたか？<br />
                         清掃前のステータスに切り替えます。
                     </p>
                     <button
                         onClick={() => handleAction("before-cleaning", "更新完了", "ステータスを「清掃前」に<br />変更しました")}
-                        className="w-full max-w-sm font-bold py-4 rounded-[24px] transition-all flex justify-center items-center gap-2 text-lg tracking-tight bg-black text-white active:bg-gray-800 shadow-xl shadow-black/10"
+                        className="w-full max-w-[300px] font-normal py-[18px] rounded-full transition-all flex justify-center items-center gap-2 text-sm tracking-widest bg-black text-white active:bg-gray-800 shadow-xl shadow-black/10 mx-auto"
                     >
                         ステータスを清掃前に変更する
                     </button>
