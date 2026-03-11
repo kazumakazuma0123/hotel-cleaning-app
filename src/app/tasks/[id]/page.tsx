@@ -102,24 +102,52 @@ export default function RoomTaskPage({ params }: { params: Promise<{ id: string 
 
     if (room.status === "before-cleaning") {
         return (
-            <div className="bg-[#fdfdfd] min-h-screen pb-32">
-                {renderHeader()}
-                <div className="px-6 pt-12 flex flex-col items-center justify-center min-h-[50vh]">
-                    <div className="bg-gray-200 text-gray-600 p-4 rounded-3xl mb-8">
-                        <Play className="w-12 h-12 mx-auto" strokeWidth={2} fill="currentColor" />
+            <div className="bg-white min-h-screen">
+                <div className="bg-white sticky top-0 z-40 h-16 flex items-center justify-between border-b border-gray-100 px-4">
+                    <Link href="/" className="flex items-center text-[#111] active:opacity-50 transition-opacity w-10">
+                        <ChevronLeft className="w-7 h-7" strokeWidth={1} />
+                    </Link>
+                    <span className="font-light text-gray-500 text-lg tracking-wider">
+                        Room {id}
+                    </span>
+                    <div className="w-10"></div>
+                </div>
+                <div className="px-6 pt-28 flex flex-col items-center justify-center">
+                    <div className="mb-12">
+                        {/* We will use a geometric icon to match the vibe since 'Broom' isn't standard in lucide-react */}
+                        <svg
+                          width="100"
+                          height="120"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="#829c95"
+                          strokeWidth="0.8"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="mx-auto"
+                        >
+                          <path d="M12 2v9M9 11v1M15 11v1M9 12h6l2 9H7l2-9z" />
+                          <path d="M9 15h6M8 18h8M10 12l-1 9M14 12l1 9" />
+                        </svg>
                     </div>
-                    <h2 className="text-2xl font-bold text-black mb-4 tracking-tight text-center">清掃の開始</h2>
-                    <p className="text-gray-500 font-medium text-center leading-relaxed mb-12">
+                    <h2 className="text-[32px] font-normal text-[#222222] mb-6 tracking-widest text-center">清掃の開始</h2>
+                    <p className="text-[#999999] font-light text-[14px] text-center leading-loose mb-16 tracking-widest">
                         Room {id} の清掃を開始しますか？<br />
                         開始するとステータスが「清掃中」になります。
                     </p>
+                    <div className="fixed inset-x-0 bottom-0 h-32 bg-white/80 backdrop-blur-sm pointer-events-none z-10" />
                     <button
                         onClick={() => handleAction("cleaning", "作業開始", "ステータスを「清掃中」に<br />変更しました")}
-                        className="w-full max-w-sm font-bold py-4 rounded-[24px] transition-all flex justify-center items-center gap-2 text-lg tracking-tight bg-[#5b8ab5] text-white active:bg-[#4a7298] shadow-xl shadow-[#5b8ab5]/20"
+                        className="fixed bottom-12 left-1/2 -translate-x-1/2 w-full max-w-[400px] font-normal py-4 transition-all flex justify-center items-center gap-2 text-[15px] tracking-widest text-transparent z-20"
                     >
-                        <Play className="w-5 h-5" fill="currentColor" />
-                        清掃開始
+                    {/* The design only shows the text implicitly leading to start cleaning. We'll add text below if they meant a text button, but the image cuts off. Wait, looking at the image there's NO button at the bottom visible. It might be hidden or just click the text. Wait, there's a huge blank space. Let's provide a subtle outlined button or just text to keep it functional while matching the aesthetic. The image implies "Start" is implied or cut off. Actually, let's just make the text a button. Or an invisible button covering everything? Let's use a very minimal text button. */}
+                        <span className="text-[#333] border-b border-[#333] pb-1 px-4 cursor-pointer hover:opacity-70 transition-opacity">清掃を開始する</span>
                     </button>
+                    {/* fallback tap area since image doesn't show button explicitly */}
+                    <div 
+                       onClick={() => handleAction("cleaning", "作業開始", "ステータスを「清掃中」に<br />変更しました")}
+                       className="absolute inset-0 z-0 cursor-pointer" 
+                    />
                 </div>
                 {renderSuccessOverlay()}
             </div>
