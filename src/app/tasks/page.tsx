@@ -1,14 +1,23 @@
 "use client";
 
+import { useState } from "react";
 import { CheckCircle2, Circle, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 export default function TasksIndex() {
-    const sampleTasks = [
+    const [tasks, setTasks] = useState([
         { id: 1, title: "1階ロビーの清掃とゴミ回収", time: "10:00 - 11:00", status: "completed" },
         { id: 2, title: "各フロアの消耗品（リネン等）の補充", time: "11:00 - 12:00", status: "pending" },
         { id: 3, title: "共有トイレの点検と清掃", time: "13:00 - 14:00", status: "pending" },
-    ];
+    ]);
+
+    const toggleTask = (id: number) => {
+        setTasks(tasks.map(task => 
+            task.id === id 
+                ? { ...task, status: task.status === "completed" ? "pending" : "completed" } 
+                : task
+        ));
+    };
 
     return (
         <div className="p-5 pb-24 min-h-screen bg-[#f7f7f7] pt-14">
@@ -20,13 +29,16 @@ export default function TasksIndex() {
             </header>
 
             <div className="space-y-4">
-                {sampleTasks.map((task) => (
+                {tasks.map((task) => (
                     <div 
                         key={task.id} 
-                        className="bg-white rounded-2xl p-5 shadow-[0_2px_12px_rgba(0,0,0,0.04)] active:scale-[0.98] transition-transform flex items-center gap-4 cursor-pointer"
+                        className="bg-white rounded-2xl p-5 shadow-[0_2px_12px_rgba(0,0,0,0.04)] active:scale-[0.98] transition-transform flex items-center gap-4 cursor-default"
                     >
                         {/* Status Icon */}
-                        <div className="shrink-0">
+                        <div 
+                            className="shrink-0 cursor-pointer transition-transform hover:scale-110 active:scale-95"
+                            onClick={() => toggleTask(task.id)}
+                        >
                             {task.status === "completed" ? (
                                 <div className="w-8 h-8 rounded-full bg-[#f0f5f1] flex items-center justify-center">
                                     <CheckCircle2 className="w-5 h-5 text-[#6d8a74]" strokeWidth={2.5} />
@@ -47,7 +59,7 @@ export default function TasksIndex() {
                         </div>
                         
                         {/* Next arrow */}
-                        <div className="shrink-0">
+                        <div className="shrink-0 cursor-pointer">
                             <ChevronRight className="w-5 h-5 text-gray-300" strokeWidth={2} />
                         </div>
                     </div>
