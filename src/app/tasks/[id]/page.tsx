@@ -192,23 +192,52 @@ export default function RoomTaskPage({ params }: { params: Promise<{ id: string 
 
     if (room.status === "cleaned") {
         return (
-            <div className="bg-[#fdfdfd] min-h-screen pb-32">
-                {renderHeader()}
-                <div className="px-6 pt-12 flex flex-col items-center justify-center min-h-[50vh]">
-                    <div className="bg-blue-50 text-blue-500 p-4 rounded-3xl mb-8">
-                        <CheckCircle2 className="w-12 h-12 mx-auto" strokeWidth={2} />
+            <div className="bg-white min-h-screen">
+                <div className="bg-white sticky top-0 z-40 h-16 flex items-center justify-between border-b border-gray-100 px-4">
+                    <Link href="/" className="flex items-center text-[#111] active:opacity-50 transition-opacity w-10">
+                        <ChevronLeft className="w-7 h-7" strokeWidth={1} />
+                    </Link>
+                    <span className="font-light text-gray-500 text-lg tracking-wider">
+                        Room {id}
+                    </span>
+                    <div className="w-10"></div>
+                </div>
+                <div className="px-6 pt-24 flex flex-col items-center justify-center">
+                    <div className="mb-12">
+                        {/* Custom SVG Checkmark to match the user's minimal outlined style */}
+                        <svg 
+                            width="120" 
+                            height="120" 
+                            viewBox="0 0 24 24" 
+                            fill="none" 
+                            stroke="#829c95" 
+                            strokeWidth="1" 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round"
+                            className="mx-auto"
+                        >
+                            <path d="M20 6L9 17l-5-5" />
+                        </svg>
                     </div>
-                    <h2 className="text-2xl font-bold text-black mb-4 tracking-tight text-center">清掃の点検</h2>
-                    <p className="text-gray-500 font-medium text-center leading-relaxed mb-12">
+                    <h2 className="text-[32px] font-normal text-[#222222] mb-6 tracking-widest text-center">清掃の点検</h2>
+                    <p className="text-[#999999] font-light text-[14px] text-center leading-loose mb-16 tracking-widest">
                         Room {id} の清掃が完了しました。<br />
                         点検を実行しますか？
                     </p>
+                    <div className="fixed inset-x-0 bottom-0 h-32 bg-white/80 backdrop-blur-sm pointer-events-none z-10" />
                     <button
                         onClick={() => handleAction("inspected", "点検完了", "ステータスを「確認済み」に<br />変更しました")}
-                        className="w-full max-w-sm font-bold py-4 rounded-[24px] transition-all flex justify-center items-center gap-2 text-lg tracking-tight bg-blue-500 text-white active:bg-blue-600 shadow-xl shadow-blue-500/20"
+                        className="fixed bottom-12 left-1/2 -translate-x-1/2 w-full max-w-[400px] font-normal py-4 transition-all flex justify-center items-center gap-2 text-[15px] tracking-widest text-transparent z-20"
                     >
-                        点検を完了する
+                        <span className="text-[#333] border-b border-[#333] pb-1 px-4 cursor-pointer hover:opacity-70 transition-opacity">点検を完了する</span>
                     </button>
+                    {/* fallback tap area since image doesn't show button explicitly */}
+                    <div 
+                       onClick={() => handleAction("inspected", "点検完了", "ステータスを「確認済み」に<br />変更しました")}
+                       className="absolute inset-0 z-0 cursor-pointer text-transparent" 
+                    >
+                        .
+                    </div>
                 </div>
                 {renderSuccessOverlay()}
             </div>
