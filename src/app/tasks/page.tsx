@@ -11,17 +11,35 @@ export default function TasksIndex() {
         { id: 3, title: "共有トイレの点検と清掃", time: "13:00 - 14:00", status: "pending" },
     ]);
     const [activeDeleteId, setActiveDeleteId] = useState<number | null>(null);
+    const [isAddingTask, setIsAddingTask] = useState(false);
+    const [newTaskTitle, setNewTaskTitle] = useState("");
 
     const removeTask = (id: number) => {
         setTasks(tasks.filter(task => task.id !== id));
         setActiveDeleteId(null);
     };
+
     const toggleTask = (id: number) => {
         setTasks(tasks.map(task => 
             task.id === id 
                 ? { ...task, status: task.status === "completed" ? "pending" : "completed" } 
                 : task
         ));
+    };
+
+    const handleAddTask = () => {
+        if (!newTaskTitle.trim()) return;
+        
+        const newTask = {
+            id: Date.now(),
+            title: newTaskTitle.trim(),
+            time: "時間未定",
+            status: "pending"
+        };
+        
+        setTasks([...tasks, newTask]);
+        setNewTaskTitle("");
+        setIsAddingTask(false);
     };
 
     return (
@@ -90,17 +108,53 @@ export default function TasksIndex() {
                     );
                 })}
 
-                {/* Add Task Card */}
-                <div 
-                    className="bg-white/50 border-2 border-dashed border-gray-200 rounded-2xl p-4 active:scale-[0.98] transition-all flex items-center justify-center gap-3 cursor-pointer hover:bg-white"
-                >
-                    <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                        <Plus className="w-5 h-5 text-gray-500" strokeWidth={2.5} />
+                {/* Add Task Card / Input */}
+                {isAddingTask ? (
+                    <div className="bg-white rounded-2xl p-5 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+                        <input 
+                            type="text"
+                            value={newTaskTitle}
+                            onChange={(e) => setNewTaskTitle(e.target.value)}
+                            placeholder="タスクを入力"
+                            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-[15px] outline-none focus:ring-2 focus:ring-gray-300 transition-all mb-4"
+                            autoFocus
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleAddTask();
+                                if (e.key === 'Escape') setIsAddingTask(false);
+                            }}
+                        />
+                        <div className="flex justify-end gap-3">
+                            <button 
+                                onClick={() => {
+                                    setIsAddingTask(false);
+                                    setNewTaskTitle("");
+                                }}
+                                className="px-4 py-2 text-sm font-semibold text-gray-500 bg-gray-100 rounded-xl active:bg-gray-200 transition-colors"
+                            >
+                                キャンセル
+                            </button>
+                            <button 
+                                onClick={handleAddTask}
+                                disabled={!newTaskTitle.trim()}
+                                className="px-4 py-2 text-sm font-bold text-white bg-[#111] rounded-xl active:bg-gray-800 disabled:opacity-50 disabled:active:bg-[#111] transition-colors"
+                            >
+                                追加
+                            </button>
+                        </div>
                     </div>
-                    <span className="font-bold text-[15px] text-gray-500 tracking-wide">
-                        タスクを追加
-                    </span>
-                </div>
+                ) : (
+                    <div 
+                        onClick={() => setIsAddingTask(true)}
+                        className="bg-white/50 border-2 border-dashed border-gray-200 rounded-2xl p-4 active:scale-[0.98] transition-all flex items-center justify-center gap-3 cursor-pointer hover:bg-white"
+                    >
+                        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                            <Plus className="w-5 h-5 text-gray-500" strokeWidth={2.5} />
+                        </div>
+                        <span className="font-bold text-[15px] text-gray-500 tracking-wide">
+                            タスクを追加
+                        </span>
+                    </div>
+                )}
             </div>
         </div>
     );
