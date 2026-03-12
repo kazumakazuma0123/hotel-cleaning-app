@@ -134,23 +134,16 @@ export default function RoomTaskPage({ params }: { params: Promise<{ id: string 
                         </svg>
                     </div>
                     <h2 className="text-[32px] font-normal text-[#222222] mb-6 tracking-widest text-center">清掃の開始</h2>
-                    <p className="text-[#999999] font-light text-[14px] text-center leading-loose mb-16 tracking-widest">
+                    <p className="text-[#999999] font-light text-[14px] text-center leading-loose mb-12 tracking-widest">
                         Room {id} の清掃を開始しますか？<br />
                         開始するとステータスが「清掃中」になります。
                     </p>
-                    <div className="fixed inset-x-0 bottom-0 h-32 bg-white/80 backdrop-blur-sm pointer-events-none z-10" />
                     <button
                         onClick={() => handleAction("cleaning", "作業開始", "ステータスを「清掃中」に<br />変更しました", false)}
-                        className="fixed bottom-12 left-1/2 -translate-x-1/2 w-full max-w-[400px] font-normal py-4 transition-all flex justify-center items-center gap-2 text-[15px] tracking-widest text-transparent z-20"
+                        className="font-normal py-4 transition-all flex justify-center items-center gap-2 text-[15px] tracking-widest z-20"
                     >
-                    {/* The design only shows the text implicitly leading to start cleaning. We'll add text below if they meant a text button, but the image cuts off. Wait, looking at the image there's NO button at the bottom visible. It might be hidden or just click the text. Wait, there's a huge blank space. Let's provide a subtle outlined button or just text to keep it functional while matching the aesthetic. The image implies "Start" is implied or cut off. Actually, let's just make the text a button. Or an invisible button covering everything? Let's use a very minimal text button. */}
                         <span className="text-[#333] border-b border-[#333] pb-1 px-4 cursor-pointer hover:opacity-70 transition-opacity">清掃を開始する</span>
                     </button>
-                    {/* fallback tap area since image doesn't show button explicitly */}
-                    <div 
-                       onClick={() => handleAction("cleaning", "作業開始", "ステータスを「清掃中」に<br />変更しました", false)}
-                       className="absolute inset-0 z-0 cursor-pointer" 
-                    />
                 </div>
                 {renderSuccessOverlay()}
             </div>
