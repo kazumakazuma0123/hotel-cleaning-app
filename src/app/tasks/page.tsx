@@ -59,16 +59,6 @@ function SortableTaskCard({
             className={`bg-white rounded-2xl p-5 shadow-[0_2px_12px_rgba(0,0,0,0.04)] flex items-center gap-3 cursor-pointer ${isDragging ? "shadow-xl scale-[1.02]" : ""}`}
             onClick={() => onSelect(task)}
         >
-            {/* Drag Handle */}
-            <div
-                className="shrink-0 touch-none cursor-grab active:cursor-grabbing text-gray-300 -ml-1"
-                {...attributes}
-                {...listeners}
-                onClick={(e) => e.stopPropagation()}
-            >
-                <GripVertical className="w-5 h-5" strokeWidth={1.5} />
-            </div>
-
             {/* Status Icon */}
             <div
                 className="shrink-0 cursor-pointer transition-transform hover:scale-110 active:scale-95"
@@ -103,9 +93,14 @@ function SortableTaskCard({
                 </div>
             )}
 
-            {/* Chevron */}
-            <div className="shrink-0">
-                <ChevronRight className="w-5 h-5 text-gray-300" strokeWidth={2} />
+            {/* Drag Handle (right side) */}
+            <div
+                className="shrink-0 touch-none cursor-grab active:cursor-grabbing text-gray-300"
+                {...attributes}
+                {...listeners}
+                onClick={(e) => e.stopPropagation()}
+            >
+                <GripVertical className="w-5 h-5" strokeWidth={1.5} />
             </div>
         </div>
     );
