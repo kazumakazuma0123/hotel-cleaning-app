@@ -167,6 +167,15 @@ export default function TasksIndex() {
         ));
     };
 
+    const updateTask = (id: number, updates: Partial<Task>) => {
+        setTasks(tasks.map(task =>
+            task.id === id ? { ...task, ...updates } : task
+        ));
+        if (selectedTask?.id === id) {
+            setSelectedTask(prev => prev ? { ...prev, ...updates } : null);
+        }
+    };
+
     const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -308,13 +317,19 @@ export default function TasksIndex() {
                     >
                         {/* Header */}
                         <div className="flex justify-between items-start mb-4">
-                            <div className="pr-4">
-                                <h2 className="text-xl font-bold text-[#111] mb-2 leading-tight">
-                                    {selectedTask.title}
-                                </h2>
-                                <p className="text-sm font-semibold text-gray-500 tracking-wide">
-                                    {selectedTask.time}
-                                </p>
+                            <div className="flex-1 pr-4">
+                                <input
+                                    type="text"
+                                    value={selectedTask.title}
+                                    onChange={(e) => updateTask(selectedTask.id, { title: e.target.value })}
+                                    className="w-full text-xl font-bold text-[#111] mb-2 leading-tight bg-transparent border-b border-transparent focus:border-gray-300 outline-none transition-colors py-1"
+                                />
+                                <input
+                                    type="text"
+                                    value={selectedTask.time}
+                                    onChange={(e) => updateTask(selectedTask.id, { time: e.target.value })}
+                                    className="w-full text-sm font-semibold text-gray-500 tracking-wide bg-transparent border-b border-transparent focus:border-gray-300 outline-none transition-colors py-1"
+                                />
                             </div>
                             <button
                                 onClick={() => setSelectedTask(null)}
