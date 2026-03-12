@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Circle, ChevronRight, Trash2 } from "lucide-react";
+import { CheckCircle2, Circle, ChevronRight, Trash2, Plus } from "lucide-react";
 import Link from "next/link";
 
 export default function TasksIndex() {
@@ -89,6 +89,18 @@ export default function TasksIndex() {
                         </div>
                     );
                 })}
+
+                {/* Add Task Card */}
+                <div 
+                    className="bg-white/50 border-2 border-dashed border-gray-200 rounded-2xl p-4 active:scale-[0.98] transition-all flex items-center justify-center gap-3 cursor-pointer hover:bg-white"
+                >
+                    <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                        <Plus className="w-5 h-5 text-gray-500" strokeWidth={2.5} />
+                    </div>
+                    <span className="font-bold text-[15px] text-gray-500 tracking-wide">
+                        タスクを追加
+                    </span>
+                </div>
             </div>
         </div>
     );
