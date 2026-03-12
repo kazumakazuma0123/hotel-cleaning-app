@@ -144,7 +144,7 @@ export default function TasksIndex() {
             {/* Task Details Modal */}
             {selectedTask && (
                 <div 
-                    className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex justify-center items-end sm:items-center p-4 transition-opacity"
+                    className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex justify-center items-center p-4 transition-opacity"
                     onClick={() => setSelectedTask(null)}
                 >
                     <div 
