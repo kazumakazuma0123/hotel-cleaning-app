@@ -64,12 +64,15 @@ export default function RoomTaskPage({ params }: { params: Promise<{ id: string 
     const completedCount = items.filter(i => i.checked).length;
     const isAllDone = completedCount === items.length;
 
-    const handleAction = (newStatus: "before-cleaning" | "cleaning" | "cleaned", title: string, desc: string) => {
+    const handleAction = (newStatus: "before-cleaning" | "cleaning" | "cleaned", title: string, desc: string, shouldRedirect: boolean = true) => {
         setSuccessMessage({ title, description: desc });
         setShowSuccess(true);
         setTimeout(() => {
+            setShowSuccess(false);
             updateRoomStatus(id, newStatus);
-            router.push("/");
+            if (shouldRedirect) {
+                router.push("/");
+            }
         }, 1500);
     };
 
@@ -137,7 +140,7 @@ export default function RoomTaskPage({ params }: { params: Promise<{ id: string 
                     </p>
                     <div className="fixed inset-x-0 bottom-0 h-32 bg-white/80 backdrop-blur-sm pointer-events-none z-10" />
                     <button
-                        onClick={() => handleAction("cleaning", "作業開始", "ステータスを「清掃中」に<br />変更しました")}
+                        onClick={() => handleAction("cleaning", "作業開始", "ステータスを「清掃中」に<br />変更しました", false)}
                         className="fixed bottom-12 left-1/2 -translate-x-1/2 w-full max-w-[400px] font-normal py-4 transition-all flex justify-center items-center gap-2 text-[15px] tracking-widest text-transparent z-20"
                     >
                     {/* The design only shows the text implicitly leading to start cleaning. We'll add text below if they meant a text button, but the image cuts off. Wait, looking at the image there's NO button at the bottom visible. It might be hidden or just click the text. Wait, there's a huge blank space. Let's provide a subtle outlined button or just text to keep it functional while matching the aesthetic. The image implies "Start" is implied or cut off. Actually, let's just make the text a button. Or an invisible button covering everything? Let's use a very minimal text button. */}
@@ -145,7 +148,7 @@ export default function RoomTaskPage({ params }: { params: Promise<{ id: string 
                     </button>
                     {/* fallback tap area since image doesn't show button explicitly */}
                     <div 
-                       onClick={() => handleAction("cleaning", "作業開始", "ステータスを「清掃中」に<br />変更しました")}
+                       onClick={() => handleAction("cleaning", "作業開始", "ステータスを「清掃中」に<br />変更しました", false)}
                        className="absolute inset-0 z-0 cursor-pointer" 
                     />
                 </div>
