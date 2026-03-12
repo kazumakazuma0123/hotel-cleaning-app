@@ -1,8 +1,23 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { CheckCircle2, Circle, ChevronRight, Trash2, Plus, X, ImagePlus } from "lucide-react";
-import Link from "next/link";
+import { CheckCircle2, ChevronRight, Trash2, Plus, X, ImagePlus, GripVertical } from "lucide-react";
+import {
+    DndContext,
+    closestCenter,
+    PointerSensor,
+    TouchSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+} from "@dnd-kit/core";
+import {
+    arrayMove,
+    SortableContext,
+    useSortable,
+    verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 type Task = {
     id: number;
@@ -11,6 +26,90 @@ type Task = {
     status: string;
     image?: string;
 };
+
+function SortableTaskCard({ 
+    task, 
+    onToggle, 
+    onSelect 
+}: { 
+    task: Task; 
+    onToggle: (id: number) => void; 
+    onSelect: (task: Task) => void;
+}) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: task.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 50 : undefined,
+        opacity: isDragging ? 0.85 : 1,
+    };
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            className={`bg-white rounded-2xl p-5 shadow-[0_2px_12px_rgba(0,0,0,0.04)] flex items-center gap-3 cursor-pointer ${isDragging ? "shadow-xl scale-[1.02]" : ""}`}
+            onClick={() => onSelect(task)}
+        >
+            {/* Drag Handle */}
+            <div
+                className="shrink-0 touch-none cursor-grab active:cursor-grabbing text-gray-300 -ml-1"
+                {...attributes}
+                {...listeners}
+                onClick={(e) => e.stopPropagation()}
+            >
+                <GripVertical className="w-5 h-5" strokeWidth={1.5} />
+            </div>
+
+            {/* Status Icon */}
+            <div
+                className="shrink-0 cursor-pointer transition-transform hover:scale-110 active:scale-95"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onToggle(task.id);
+                }}
+            >
+                {task.status === "completed" ? (
+                    <div className="w-8 h-8 rounded-full bg-[#f0f5f1] flex items-center justify-center">
+                        <CheckCircle2 className="w-5 h-5 text-[#6d8a74]" strokeWidth={2.5} />
+                    </div>
+                ) : (
+                    <div className="w-8 h-8 rounded-full border-2 border-gray-200 flex items-center justify-center" />
+                )}
+            </div>
+
+            {/* Task Content */}
+            <div className="flex-1 min-w-0">
+                <h3 className={`font-semibold text-[15px] leading-snug mb-1.5 ${task.status === "completed" ? "text-gray-400 line-through" : "text-[#222]"}`}>
+                    {task.title}
+                </h3>
+                <p className="text-xs font-semibold text-gray-400 tracking-wide">
+                    {task.time}
+                </p>
+            </div>
+
+            {/* Image Thumbnail */}
+            {task.image && (
+                <div className="shrink-0 w-12 h-12 rounded-xl overflow-hidden">
+                    <img src={task.image} alt="" className="w-full h-full object-cover" />
+                </div>
+            )}
+
+            {/* Chevron */}
+            <div className="shrink-0">
+                <ChevronRight className="w-5 h-5 text-gray-300" strokeWidth={2} />
+            </div>
+        </div>
+    );
+}
 
 export default function TasksIndex() {
     const [tasks, setTasks] = useState<Task[]>([
@@ -24,15 +123,31 @@ export default function TasksIndex() {
     const [newTaskImage, setNewTaskImage] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+        useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
+    );
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (over && active.id !== over.id) {
+            setTasks((prev) => {
+                const oldIndex = prev.findIndex((t) => t.id === active.id);
+                const newIndex = prev.findIndex((t) => t.id === over.id);
+                return arrayMove(prev, oldIndex, newIndex);
+            });
+        }
+    };
+
     const removeTask = (id: number) => {
         setTasks(tasks.filter(task => task.id !== id));
         if (selectedTask?.id === id) setSelectedTask(null);
     };
 
     const toggleTask = (id: number) => {
-        setTasks(tasks.map(task => 
-            task.id === id 
-                ? { ...task, status: task.status === "completed" ? "pending" : "completed" } 
+        setTasks(tasks.map(task =>
+            task.id === id
+                ? { ...task, status: task.status === "completed" ? "pending" : "completed" }
                 : task
         ));
     };
@@ -49,7 +164,6 @@ export default function TasksIndex() {
 
     const handleAddTask = () => {
         if (!newTaskTitle.trim()) return;
-        
         const newTask: Task = {
             id: Date.now(),
             title: newTaskTitle.trim(),
@@ -57,7 +171,6 @@ export default function TasksIndex() {
             status: "pending",
             ...(newTaskImage ? { image: newTaskImage } : {})
         };
-        
         setTasks([...tasks, newTask]);
         setNewTaskTitle("");
         setNewTaskImage(null);
@@ -80,57 +193,23 @@ export default function TasksIndex() {
             </header>
 
             <div className="space-y-4">
-                {tasks.map((task) => (
-                    <div 
-                        key={task.id} 
-                        className="bg-white rounded-2xl p-5 shadow-[0_2px_12px_rgba(0,0,0,0.04)] active:scale-[0.98] transition-transform flex items-center gap-4 cursor-pointer"
-                        onClick={() => setSelectedTask(task)}
-                    >
-                        {/* Status Icon Area - Click to toggle completion */}
-                        <div 
-                            className="shrink-0 cursor-pointer transition-transform hover:scale-110 active:scale-95"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                toggleTask(task.id);
-                            }}
-                        >
-                            {task.status === "completed" ? (
-                                <div className="w-8 h-8 rounded-full bg-[#f0f5f1] flex items-center justify-center">
-                                    <CheckCircle2 className="w-5 h-5 text-[#6d8a74]" strokeWidth={2.5} />
-                                </div>
-                            ) : (
-                                <div className="w-8 h-8 rounded-full border-2 border-gray-200 flex items-center justify-center" />
-                            )}
-                        </div>
-
-                        {/* Task Content */}
-                        <div className="flex-1 min-w-0">
-                            <h3 className={`font-semibold text-[15px] leading-snug mb-1.5 ${task.status === "completed" ? "text-gray-400 line-through" : "text-[#222]"}`}>
-                                {task.title}
-                            </h3>
-                            <p className="text-xs font-semibold text-gray-400 tracking-wide">
-                                {task.time}
-                            </p>
-                        </div>
-
-                        {/* Image Thumbnail */}
-                        {task.image && (
-                            <div className="shrink-0 w-12 h-12 rounded-xl overflow-hidden">
-                                <img src={task.image} alt="" className="w-full h-full object-cover" />
-                            </div>
-                        )}
-                        
-                        {/* Action Area (Chevron) */}
-                        <div className="shrink-0">
-                            <ChevronRight className="w-5 h-5 text-gray-300" strokeWidth={2} />
-                        </div>
-                    </div>
-                ))}
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                    <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                        {tasks.map((task) => (
+                            <SortableTaskCard
+                                key={task.id}
+                                task={task}
+                                onToggle={toggleTask}
+                                onSelect={setSelectedTask}
+                            />
+                        ))}
+                    </SortableContext>
+                </DndContext>
 
                 {/* Add Task Card / Input */}
                 {isAddingTask ? (
                     <div className="bg-white rounded-2xl p-5 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
-                        <input 
+                        <input
                             type="text"
                             value={newTaskTitle}
                             onChange={(e) => setNewTaskTitle(e.target.value)}
@@ -147,7 +226,7 @@ export default function TasksIndex() {
                         {newTaskImage && (
                             <div className="relative mb-4 rounded-xl overflow-hidden">
                                 <img src={newTaskImage} alt="preview" className="w-full max-h-48 object-cover rounded-xl" />
-                                <button 
+                                <button
                                     onClick={() => setNewTaskImage(null)}
                                     className="absolute top-2 right-2 p-1.5 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
                                 >
@@ -157,29 +236,27 @@ export default function TasksIndex() {
                         )}
 
                         <div className="flex justify-between items-center">
-                            {/* Image Upload Button */}
-                            <button 
+                            <button
                                 onClick={() => fileInputRef.current?.click()}
                                 className="p-2.5 bg-gray-100 rounded-xl text-gray-500 active:bg-gray-200 transition-colors"
                             >
                                 <ImagePlus className="w-5 h-5" strokeWidth={2} />
                             </button>
-                            <input 
+                            <input
                                 ref={fileInputRef}
                                 type="file"
                                 accept="image/*"
                                 className="hidden"
                                 onChange={handleImageSelect}
                             />
-
                             <div className="flex gap-3">
-                                <button 
+                                <button
                                     onClick={resetAddForm}
                                     className="px-4 py-2 text-sm font-semibold text-gray-500 bg-gray-100 rounded-xl active:bg-gray-200 transition-colors"
                                 >
                                     キャンセル
                                 </button>
-                                <button 
+                                <button
                                     onClick={handleAddTask}
                                     disabled={!newTaskTitle.trim()}
                                     className="px-4 py-2 text-sm font-bold text-white bg-[#111] rounded-xl active:bg-gray-800 disabled:opacity-50 disabled:active:bg-[#111] transition-colors"
@@ -190,7 +267,7 @@ export default function TasksIndex() {
                         </div>
                     </div>
                 ) : (
-                    <div 
+                    <div
                         onClick={() => setIsAddingTask(true)}
                         className="bg-white/50 border-2 border-dashed border-gray-200 rounded-2xl p-4 active:scale-[0.98] transition-all flex items-center justify-center gap-3 cursor-pointer hover:bg-white"
                     >
@@ -206,11 +283,11 @@ export default function TasksIndex() {
 
             {/* Task Details Modal */}
             {selectedTask && (
-                <div 
+                <div
                     className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex justify-center items-center p-4 transition-opacity"
                     onClick={() => setSelectedTask(null)}
                 >
-                    <div 
+                    <div
                         className="bg-white rounded-[28px] w-full max-w-md p-6 shadow-2xl relative"
                         onClick={(e) => e.stopPropagation()}
                     >
@@ -224,8 +301,8 @@ export default function TasksIndex() {
                                     {selectedTask.time}
                                 </p>
                             </div>
-                            <button 
-                                onClick={() => setSelectedTask(null)} 
+                            <button
+                                onClick={() => setSelectedTask(null)}
                                 className="p-2 bg-gray-100 rounded-full text-gray-400 hover:text-[#111] active:bg-gray-200 transition-colors shrink-0"
                             >
                                 <X className="w-5 h-5" strokeWidth={2.5} />
@@ -238,10 +315,10 @@ export default function TasksIndex() {
                                 <img src={selectedTask.image} alt="" className="w-full max-h-56 object-cover" />
                             </div>
                         )}
-                        
+
                         {/* Actions */}
                         <div className="space-y-3 mt-4">
-                            <button 
+                            <button
                                 onClick={() => {
                                     toggleTask(selectedTask.id);
                                     setSelectedTask({ ...selectedTask, status: selectedTask.status === "completed" ? "pending" : "completed" });
@@ -257,8 +334,8 @@ export default function TasksIndex() {
                                     </>
                                 )}
                             </button>
-                            
-                            <button 
+
+                            <button
                                 onClick={() => removeTask(selectedTask.id)}
                                 className="w-full py-[18px] bg-red-50 text-red-500 rounded-[20px] font-bold text-[15px] flex items-center justify-center gap-2 active:bg-red-100 transition-colors"
                             >
