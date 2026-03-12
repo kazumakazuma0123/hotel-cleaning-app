@@ -173,14 +173,37 @@ export default function TasksIndex() {
         }
     };
 
-    const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const compressImage = (file: File, maxSize: number = 400, quality: number = 0.6): Promise<string> => {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement("canvas");
+                    let w = img.width;
+                    let h = img.height;
+                    if (w > h) {
+                        if (w > maxSize) { h = h * (maxSize / w); w = maxSize; }
+                    } else {
+                        if (h > maxSize) { w = w * (maxSize / h); h = maxSize; }
+                    }
+                    canvas.width = w;
+                    canvas.height = h;
+                    const ctx = canvas.getContext("2d")!;
+                    ctx.drawImage(img, 0, 0, w, h);
+                    resolve(canvas.toDataURL("image/jpeg", quality));
+                };
+                img.src = ev.target?.result as string;
+            };
+            reader.readAsDataURL(file);
+        });
+    };
+
+    const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            setNewTaskImage(ev.target?.result as string);
-        };
-        reader.readAsDataURL(file);
+        const compressed = await compressImage(file);
+        setNewTaskImage(compressed);
     };
 
     const handleAddTask = () => {
