@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Home, ClipboardList, Settings, BookOpen } from "lucide-react";
+import { Home, ClipboardList, BookOpen } from "lucide-react";
 
 export function BottomNav() {
     return (
@@ -16,10 +16,6 @@ export function BottomNav() {
                 <Link href="/tasks" className="flex flex-col items-center justify-center w-full h-full text-gray-400 hover:text-black active:text-black transition-colors">
                     <ClipboardList className="w-6 h-6 mb-1" strokeWidth={1.5} />
                     <span className="text-[10px] font-medium tracking-wide">Tasks</span>
-                </Link>
-                <Link href="/settings" className="flex flex-col items-center justify-center w-full h-full text-gray-400 hover:text-black active:text-black transition-colors">
-                    <Settings className="w-6 h-6 mb-1" strokeWidth={1.5} />
-                    <span className="text-[10px] font-medium tracking-wide">Settings</span>
                 </Link>
             </div>
         </nav>
