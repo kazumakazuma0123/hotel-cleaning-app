@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Circle, ChevronRight } from "lucide-react";
+import { CheckCircle2, Circle, ChevronRight, Trash2 } from "lucide-react";
 import Link from "next/link";
 
 export default function TasksIndex() {
@@ -10,7 +10,12 @@ export default function TasksIndex() {
         { id: 2, title: "各フロアの消耗品（リネン等）の補充", time: "11:00 - 12:00", status: "pending" },
         { id: 3, title: "共有トイレの点検と清掃", time: "13:00 - 14:00", status: "pending" },
     ]);
+    const [activeDeleteId, setActiveDeleteId] = useState<number | null>(null);
 
+    const removeTask = (id: number) => {
+        setTasks(tasks.filter(task => task.id !== id));
+        setActiveDeleteId(null);
+    };
     const toggleTask = (id: number) => {
         setTasks(tasks.map(task => 
             task.id === id 
@@ -29,41 +34,54 @@ export default function TasksIndex() {
             </header>
 
             <div className="space-y-4">
-                {tasks.map((task) => (
-                    <div 
-                        key={task.id} 
-                        className="bg-white rounded-2xl p-5 shadow-[0_2px_12px_rgba(0,0,0,0.04)] active:scale-[0.98] transition-transform flex items-center gap-4 cursor-default"
-                    >
-                        {/* Status Icon */}
-                        <div 
-                            className="shrink-0 cursor-pointer transition-transform hover:scale-110 active:scale-95"
-                            onClick={() => toggleTask(task.id)}
-                        >
-                            {task.status === "completed" ? (
-                                <div className="w-8 h-8 rounded-full bg-[#f0f5f1] flex items-center justify-center">
-                                    <CheckCircle2 className="w-5 h-5 text-[#6d8a74]" strokeWidth={2.5} />
-                                </div>
-                            ) : (
-                                <div className="w-8 h-8 rounded-full border-2 border-gray-200 flex items-center justify-center" />
-                            )}
-                        </div>
+                {tasks.map((task) => {
+                    const isDeleteActive = activeDeleteId === task.id;
 
-                        {/* Task Content */}
-                        <div className="flex-1">
-                            <h3 className={`font-semibold text-[15px] leading-snug mb-1.5 ${task.status === "completed" ? "text-gray-400 line-through" : "text-[#222]"}`}>
-                                {task.title}
-                            </h3>
-                            <p className="text-xs font-semibold text-gray-400 tracking-wide">
-                                {task.time}
-                            </p>
+                    return (
+                        <div 
+                            key={task.id} 
+                            className="bg-white rounded-2xl p-5 shadow-[0_2px_12px_rgba(0,0,0,0.04)] active:scale-[0.98] transition-transform flex items-center gap-4 cursor-default"
+                        >
+                            {/* Status Icon Area - Click to reveal delete button */}
+                            <div 
+                                className="shrink-0 cursor-pointer transition-transform hover:scale-110 active:scale-95"
+                                onClick={() => setActiveDeleteId(isDeleteActive ? null : task.id)}
+                            >
+                                {isDeleteActive ? (
+                                    <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center">
+                                        <Trash2 className="w-4 h-4 text-red-500" strokeWidth={2.5} />
+                                    </div>
+                                ) : (
+                                    <div className="w-8 h-8 rounded-full border-2 border-gray-200 flex items-center justify-center" />
+                                )}
+                            </div>
+
+                            {/* Task Content */}
+                            <div className="flex-1">
+                                <h3 className="font-semibold text-[15px] leading-snug mb-1.5 text-[#222]">
+                                    {task.title}
+                                </h3>
+                                <p className="text-xs font-semibold text-gray-400 tracking-wide">
+                                    {task.time}
+                                </p>
+                            </div>
+                            
+                            {/* Action Area (Chevron or Delete Button) */}
+                            <div className="shrink-0">
+                                {isDeleteActive ? (
+                                    <button 
+                                        onClick={() => removeTask(task.id)}
+                                        className="bg-red-500 text-white text-xs font-bold px-4 py-2 rounded-full active:bg-red-600 transition-colors shadow-sm"
+                                    >
+                                        タスクを消去
+                                    </button>
+                                ) : (
+                                    <ChevronRight className="w-5 h-5 text-gray-300" strokeWidth={2} />
+                                )}
+                            </div>
                         </div>
-                        
-                        {/* Next arrow */}
-                        <div className="shrink-0 cursor-pointer">
-                            <ChevronRight className="w-5 h-5 text-gray-300" strokeWidth={2} />
-                        </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         </div>
     );
