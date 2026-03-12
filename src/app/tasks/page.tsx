@@ -40,16 +40,20 @@ export default function TasksIndex() {
                     return (
                         <div 
                             key={task.id} 
-                            className="bg-white rounded-2xl p-5 shadow-[0_2px_12px_rgba(0,0,0,0.04)] active:scale-[0.98] transition-transform flex items-center gap-4 cursor-default"
+                            className="bg-white rounded-2xl p-5 shadow-[0_2px_12px_rgba(0,0,0,0.04)] active:scale-[0.98] transition-transform flex items-center gap-4 cursor-pointer"
+                            onClick={() => setActiveDeleteId(isDeleteActive ? null : task.id)}
                         >
-                            {/* Status Icon Area - Click to reveal delete button */}
+                            {/* Status Icon Area - Click to toggle completion */}
                             <div 
                                 className="shrink-0 cursor-pointer transition-transform hover:scale-110 active:scale-95"
-                                onClick={() => setActiveDeleteId(isDeleteActive ? null : task.id)}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleTask(task.id);
+                                }}
                             >
-                                {isDeleteActive ? (
-                                    <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center">
-                                        <Trash2 className="w-4 h-4 text-red-500" strokeWidth={2.5} />
+                                {task.status === "completed" ? (
+                                    <div className="w-8 h-8 rounded-full bg-[#f0f5f1] flex items-center justify-center">
+                                        <CheckCircle2 className="w-5 h-5 text-[#6d8a74]" strokeWidth={2.5} />
                                     </div>
                                 ) : (
                                     <div className="w-8 h-8 rounded-full border-2 border-gray-200 flex items-center justify-center" />
@@ -58,7 +62,7 @@ export default function TasksIndex() {
 
                             {/* Task Content */}
                             <div className="flex-1">
-                                <h3 className="font-semibold text-[15px] leading-snug mb-1.5 text-[#222]">
+                                <h3 className={`font-semibold text-[15px] leading-snug mb-1.5 ${task.status === "completed" ? "text-gray-400 line-through" : "text-[#222]"}`}>
                                     {task.title}
                                 </h3>
                                 <p className="text-xs font-semibold text-gray-400 tracking-wide">
@@ -70,7 +74,10 @@ export default function TasksIndex() {
                             <div className="shrink-0">
                                 {isDeleteActive ? (
                                     <button 
-                                        onClick={() => removeTask(task.id)}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            removeTask(task.id);
+                                        }}
                                         className="bg-red-500 text-white text-xs font-bold px-4 py-2 rounded-full active:bg-red-600 transition-colors shadow-sm"
                                     >
                                         タスクを消去
