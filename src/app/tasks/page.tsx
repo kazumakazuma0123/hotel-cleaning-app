@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { CheckCircle2, ChevronRight, Trash2, Plus, X, ImagePlus, GripVertical } from "lucide-react";
 import {
     DndContext,
@@ -26,6 +26,23 @@ type Task = {
     status: string;
     image?: string;
 };
+
+const STORAGE_KEY = "hotel-cleaning-tasks-v1";
+
+const defaultTasks: Task[] = [
+    { id: 1, title: "1階ロビーの清掃とゴミ回収", time: "10:00 - 11:00", status: "completed" },
+    { id: 2, title: "各フロアの消耗品（リネン等）の補充", time: "11:00 - 12:00", status: "pending" },
+    { id: 3, title: "共有トイレの点検と清掃", time: "13:00 - 14:00", status: "pending" },
+];
+
+function loadTasks(): Task[] {
+    if (typeof window === "undefined") return defaultTasks;
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) return JSON.parse(saved);
+    } catch { /* ignore */ }
+    return defaultTasks;
+}
 
 function SortableTaskCard({ 
     task, 
@@ -107,16 +124,19 @@ function SortableTaskCard({
 }
 
 export default function TasksIndex() {
-    const [tasks, setTasks] = useState<Task[]>([
-        { id: 1, title: "1階ロビーの清掃とゴミ回収", time: "10:00 - 11:00", status: "completed" },
-        { id: 2, title: "各フロアの消耗品（リネン等）の補充", time: "11:00 - 12:00", status: "pending" },
-        { id: 3, title: "共有トイレの点検と清掃", time: "13:00 - 14:00", status: "pending" },
-    ]);
+    const [tasks, setTasks] = useState<Task[]>(loadTasks);
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [isAddingTask, setIsAddingTask] = useState(false);
     const [newTaskTitle, setNewTaskTitle] = useState("");
     const [newTaskImage, setNewTaskImage] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Persist tasks to localStorage whenever they change
+    useEffect(() => {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+        } catch { /* ignore quota errors */ }
+    }, [tasks]);
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
