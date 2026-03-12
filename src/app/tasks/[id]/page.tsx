@@ -220,24 +220,16 @@ export default function RoomTaskPage({ params }: { params: Promise<{ id: string 
                         </svg>
                     </div>
                     <h2 className="text-[32px] font-normal text-[#222222] mb-6 tracking-widest text-center">清掃の点検</h2>
-                    <p className="text-[#999999] font-light text-[14px] text-center leading-loose mb-16 tracking-widest">
+                    <p className="text-[#999999] font-light text-[14px] text-center leading-loose mb-12 tracking-widest">
                         Room {id} の清掃が完了しました。<br />
                         点検を実行しますか？
                     </p>
-                    <div className="fixed inset-x-0 bottom-0 h-32 bg-white/80 backdrop-blur-sm pointer-events-none z-10" />
                     <button
                         onClick={() => handleAction("inspected", "点検完了", "ステータスを「確認済み」に<br />変更しました")}
-                        className="fixed bottom-12 left-1/2 -translate-x-1/2 w-full max-w-[400px] font-normal py-4 transition-all flex justify-center items-center gap-2 text-[15px] tracking-widest text-transparent z-20"
+                        className="font-normal py-4 transition-all flex justify-center items-center gap-2 text-[15px] tracking-widest z-20"
                     >
                         <span className="text-[#333] border-b border-[#333] pb-1 px-4 cursor-pointer hover:opacity-70 transition-opacity">点検を完了する</span>
                     </button>
-                    {/* fallback tap area since image doesn't show button explicitly */}
-                    <div 
-                       onClick={() => handleAction("inspected", "点検完了", "ステータスを「確認済み」に<br />変更しました")}
-                       className="absolute inset-0 z-0 cursor-pointer text-transparent" 
-                    >
-                        .
-                    </div>
                 </div>
                 {renderSuccessOverlay()}
             </div>
