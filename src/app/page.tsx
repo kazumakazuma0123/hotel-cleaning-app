@@ -13,10 +13,11 @@ export default function Home() {
     "before-cleaning": { label: "清掃前", bg: "bg-[#595959] text-white" },
     "cleaning": { label: "清掃中", bg: "bg-[#2f667c] text-white" },
     "cleaned": { label: "清掃済み", bg: "bg-[#316c39] text-white" },
+    "inspected": { label: "確認済み", bg: "bg-[#aa8d65] text-white" },
     "occupied": { label: "利用中", bg: "bg-[#501a61] text-white" },
   };
 
-  const statusOrder = ["before-cleaning", "cleaning", "cleaned", "occupied"];
+  const statusOrder = ["before-cleaning", "cleaning", "cleaned", "inspected", "occupied"];
 
   return (
     <div className="p-4 pb-24 min-h-screen bg-[#f7f7f7] pt-14">

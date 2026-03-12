@@ -64,7 +64,7 @@ export default function RoomTaskPage({ params }: { params: Promise<{ id: string 
     const completedCount = items.filter(i => i.checked).length;
     const isAllDone = completedCount === items.length;
 
-    const handleAction = (newStatus: "before-cleaning" | "cleaning" | "cleaned", title: string, desc: string, shouldRedirect: boolean = true) => {
+    const handleAction = (newStatus: "before-cleaning" | "cleaning" | "cleaned" | "inspected" | "occupied", title: string, desc: string, shouldRedirect: boolean = true) => {
         setSuccessMessage({ title, description: desc });
         setShowSuccess(true);
         setTimeout(() => {
@@ -195,15 +195,47 @@ export default function RoomTaskPage({ params }: { params: Promise<{ id: string 
             <div className="bg-[#fdfdfd] min-h-screen pb-32">
                 {renderHeader()}
                 <div className="px-6 pt-12 flex flex-col items-center justify-center min-h-[50vh]">
+                    <div className="bg-blue-50 text-blue-500 p-4 rounded-3xl mb-8">
+                        <CheckCircle2 className="w-12 h-12 mx-auto" strokeWidth={2} />
+                    </div>
+                    <h2 className="text-2xl font-bold text-black mb-4 tracking-tight text-center">清掃の点検</h2>
+                    <p className="text-gray-500 font-medium text-center leading-relaxed mb-12">
+                        Room {id} の清掃が完了しました。<br />
+                        点検を実行しますか？
+                    </p>
+                    <button
+                        onClick={() => handleAction("inspected", "点検完了", "ステータスを「確認済み」に<br />変更しました")}
+                        className="w-full max-w-sm font-bold py-4 rounded-[24px] transition-all flex justify-center items-center gap-2 text-lg tracking-tight bg-blue-500 text-white active:bg-blue-600 shadow-xl shadow-blue-500/20"
+                    >
+                        点検を完了する
+                    </button>
+                </div>
+                {renderSuccessOverlay()}
+            </div>
+        );
+    }
+
+    if (room.status === "inspected") {
+        return (
+            <div className="bg-[#fdfdfd] min-h-screen pb-32">
+                {renderHeader()}
+                <div className="px-6 pt-12 flex flex-col items-center justify-center min-h-[50vh]">
                     <div className="bg-[#e8efe9] text-[#6d8a74] p-4 rounded-3xl mb-8">
                         <CheckCircle2 className="w-12 h-12 mx-auto" strokeWidth={2} />
                     </div>
-                    <h2 className="text-2xl font-bold text-black mb-4 tracking-tight text-center">清掃完了</h2>
+                    <h2 className="text-2xl font-bold text-black mb-4 tracking-tight text-center">点検完了</h2>
                     <p className="text-gray-500 font-medium text-center leading-relaxed mb-12">
-                        Room {id} は清掃済みです。<br />
+                        Room {id} は確認済み（点検完了）です。<br />
                         お疲れ様でした。
                     </p>
+                    <button
+                         onClick={() => handleAction("occupied", "利用中", "ステータスを「利用中」に<br />変更しました")}
+                         className="w-full max-w-[300px] font-normal py-[18px] rounded-full transition-all flex justify-center items-center gap-2 text-sm tracking-widest bg-black text-white active:bg-gray-800 shadow-xl shadow-black/10 mx-auto"
+                    >
+                        チェックイン（利用中）に変更する
+                    </button>
                 </div>
+                {renderSuccessOverlay()}
             </div>
         );
     }
