@@ -21,6 +21,7 @@ export const useRoomStore = create<RoomStore>()(
             rooms: [
                 { id: "001", status: "occupied", checkIn: "14:00", checkOut: "10:00" },
                 { id: "002", status: "cleaning", checkIn: "15:00", checkOut: "11:00" },
+                { id: "005", status: "before-cleaning", checkIn: "16:00", checkOut: "11:00" },
             ],
             updateRoomStatus: (id, newStatus) =>
                 set((state) => ({
@@ -30,7 +31,7 @@ export const useRoomStore = create<RoomStore>()(
                 })),
         }),
         {
-            name: "hotel-rooms-storage-v5",
+            name: "hotel-rooms-storage-v6",
         }
     )
 );
