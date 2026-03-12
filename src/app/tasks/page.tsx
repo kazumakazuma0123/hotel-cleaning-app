@@ -95,12 +95,9 @@ function SortableTaskCard({
 
             {/* Task Content */}
             <div className="flex-1 min-w-0">
-                <h3 className={`font-semibold text-[15px] leading-snug mb-1.5 ${task.status === "completed" ? "text-gray-400 line-through" : "text-[#222]"}`}>
+                <h3 className={`font-semibold text-[15px] leading-snug ${task.status === "completed" ? "text-gray-400 line-through" : "text-[#222]"}`}>
                     {task.title}
                 </h3>
-                <p className="text-xs font-semibold text-gray-400 tracking-wide">
-                    {task.time}
-                </p>
             </div>
 
             {/* Image Thumbnail */}
@@ -322,13 +319,7 @@ export default function TasksIndex() {
                                     type="text"
                                     value={selectedTask.title}
                                     onChange={(e) => updateTask(selectedTask.id, { title: e.target.value })}
-                                    className="w-full text-xl font-bold text-[#111] mb-2 leading-tight bg-transparent border-b border-transparent focus:border-gray-300 outline-none transition-colors py-1"
-                                />
-                                <input
-                                    type="text"
-                                    value={selectedTask.time}
-                                    onChange={(e) => updateTask(selectedTask.id, { time: e.target.value })}
-                                    className="w-full text-sm font-semibold text-gray-500 tracking-wide bg-transparent border-b border-transparent focus:border-gray-300 outline-none transition-colors py-1"
+                                    className="w-full text-xl font-bold text-[#111] leading-tight bg-transparent border-b border-transparent focus:border-gray-300 outline-none transition-colors py-1"
                                 />
                             </div>
                             <button
