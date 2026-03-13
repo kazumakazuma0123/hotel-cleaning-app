@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { CheckCircle2, Trash2, Plus, X, ImagePlus, GripVertical } from "lucide-react";
 import {
     DndContext,
@@ -18,33 +18,15 @@ import {
     verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { db, storage } from "@/lib/firebaseConfig";
-import {
-    collection,
-    addDoc,
-    deleteDoc,
-    updateDoc,
-    doc,
-    onSnapshot,
-    query,
-    orderBy,
-    writeBatch,
-} from "firebase/firestore";
-import {
-    ref,
-    uploadBytes,
-    getDownloadURL,
-} from "firebase/storage";
+import { supabase } from "@/lib/supabase";
 
 type Task = {
     id: string;
     title: string;
     status: string;
-    image?: string;
-    order: number;
+    image_url?: string | null;
+    sort_order: number;
 };
-
-const TASKS_COLLECTION = "tasks";
 
 function SortableTaskCard({
     task,
@@ -103,9 +85,9 @@ function SortableTaskCard({
             </div>
 
             {/* Image Thumbnail */}
-            {task.image && (
+            {task.image_url && (
                 <div className="shrink-0 w-12 h-12 rounded-xl overflow-hidden">
-                    <img src={task.image} alt="" className="w-full h-full object-cover" />
+                    <img src={task.image_url} alt="" className="w-full h-full object-cover" />
                 </div>
             )}
 
@@ -138,19 +120,40 @@ export default function TasksIndex() {
         useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
     );
 
-    // Real-time listener for Firestore
-    useEffect(() => {
-        const q = query(collection(db, TASKS_COLLECTION), orderBy("order", "asc"));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const tasksData: Task[] = snapshot.docs.map((doc) => ({
-                id: doc.id,
-                ...doc.data(),
-            })) as Task[];
-            setTasks(tasksData);
-            setLoading(false);
-        });
-        return () => unsubscribe();
+    // Fetch tasks from Supabase
+    const fetchTasks = useCallback(async () => {
+        const { data, error } = await supabase
+            .from("tasks")
+            .select("*")
+            .order("sort_order", { ascending: true });
+
+        if (error) {
+            console.error("Failed to fetch tasks:", error.message);
+        } else {
+            setTasks(data as Task[]);
+        }
+        setLoading(false);
     }, []);
+
+    // Initial fetch + real-time subscription
+    useEffect(() => {
+        fetchTasks();
+
+        const channel = supabase
+            .channel("tasks-realtime")
+            .on(
+                "postgres_changes",
+                { event: "*", schema: "public", table: "tasks" },
+                () => {
+                    fetchTasks();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [fetchTasks]);
 
     const handleDragEnd = async (event: DragEndEvent) => {
         const { active, over } = event;
@@ -163,18 +166,17 @@ export default function TasksIndex() {
         // Optimistic update
         setTasks(reordered);
 
-        // Batch update order in Firestore
-        const batch = writeBatch(db);
-        reordered.forEach((task, index) => {
-            const taskRef = doc(db, TASKS_COLLECTION, task.id);
-            batch.update(taskRef, { order: index });
-        });
-        await batch.commit();
+        // Update sort_order in Supabase
+        const updates = reordered.map((task, index) =>
+            supabase.from("tasks").update({ sort_order: index }).eq("id", task.id)
+        );
+        await Promise.all(updates);
     };
 
     const removeTask = async (id: string) => {
         if (selectedTask?.id === id) setSelectedTask(null);
-        await deleteDoc(doc(db, TASKS_COLLECTION, id));
+        setTasks((prev) => prev.filter((t) => t.id !== id));
+        await supabase.from("tasks").delete().eq("id", id);
     };
 
     const toggleTask = async (id: string) => {
@@ -182,38 +184,51 @@ export default function TasksIndex() {
         if (!task) return;
         const newStatus = task.status === "completed" ? "pending" : "completed";
 
-        // Update local selectedTask if open
         if (selectedTask?.id === id) {
             setSelectedTask({ ...selectedTask, status: newStatus });
         }
-
-        await updateDoc(doc(db, TASKS_COLLECTION, id), { status: newStatus });
+        setTasks((prev) =>
+            prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t))
+        );
+        await supabase.from("tasks").update({ status: newStatus }).eq("id", id);
     };
 
     const updateTask = async (id: string, updates: Partial<Task>) => {
         if (selectedTask?.id === id) {
             setSelectedTask((prev) => (prev ? { ...prev, ...updates } : null));
         }
-        await updateDoc(doc(db, TASKS_COLLECTION, id), updates);
+        setTasks((prev) =>
+            prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
+        );
+        await supabase.from("tasks").update(updates).eq("id", id);
     };
 
-    const uploadImage = async (file: File): Promise<string> => {
-        const fileName = `tasks/${Date.now()}_${file.name}`;
-        const storageRef = ref(storage, fileName);
-        await uploadBytes(storageRef, file);
-        return getDownloadURL(storageRef);
+    const uploadImage = async (file: File): Promise<string | null> => {
+        const fileName = `${Date.now()}_${file.name}`;
+        const { error } = await supabase.storage
+            .from("task-images")
+            .upload(fileName, file);
+
+        if (error) {
+            console.error("Image upload failed:", error.message);
+            return null;
+        }
+
+        const { data: urlData } = supabase.storage
+            .from("task-images")
+            .getPublicUrl(fileName);
+
+        return urlData.publicUrl;
     };
 
     const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        // Show local preview
         const reader = new FileReader();
         reader.onload = (ev) => {
             setNewTaskImage(ev.target?.result as string);
         };
         reader.readAsDataURL(file);
-        // Keep file reference for upload
         setNewTaskImageFile(file);
     };
 
@@ -221,31 +236,35 @@ export default function TasksIndex() {
         if (!newTaskTitle.trim() || isSubmitting) return;
         setIsSubmitting(true);
 
-        const title = newTaskTitle.trim();
-        const imageFile = newTaskImageFile;
-        const currentOrder = tasks.length;
-
-        // Close form immediately (optimistic)
-        setNewTaskTitle("");
-        setNewTaskImage(null);
-        setNewTaskImageFile(null);
-        setIsAddingTask(false);
-        setIsSubmitting(false);
-
         try {
-            let imageUrl: string | undefined;
-            if (imageFile) {
-                imageUrl = await uploadImage(imageFile);
+            let imageUrl: string | null = null;
+            if (newTaskImageFile) {
+                imageUrl = await uploadImage(newTaskImageFile);
             }
 
-            await addDoc(collection(db, TASKS_COLLECTION), {
-                title,
+            const { error } = await supabase.from("tasks").insert({
+                title: newTaskTitle.trim(),
                 status: "pending",
-                order: currentOrder,
-                ...(imageUrl ? { image: imageUrl } : {}),
+                sort_order: tasks.length,
+                image_url: imageUrl,
             });
-        } catch (error) {
-            console.error("Failed to add task:", error);
+
+            if (error) {
+                console.error("Failed to add task:", error.message);
+                alert("タスクの保存に失敗しました: " + error.message);
+                return;
+            }
+
+            setNewTaskTitle("");
+            setNewTaskImage(null);
+            setNewTaskImageFile(null);
+            setIsAddingTask(false);
+            await fetchTasks();
+        } catch (err) {
+            console.error("Error:", err);
+            alert("タスクの保存に失敗しました");
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -392,18 +411,16 @@ export default function TasksIndex() {
                         </div>
 
                         {/* Image */}
-                        {selectedTask.image && (
+                        {selectedTask.image_url && (
                             <div className="mb-6 rounded-2xl overflow-hidden">
-                                <img src={selectedTask.image} alt="" className="w-full max-h-56 object-cover" />
+                                <img src={selectedTask.image_url} alt="" className="w-full max-h-56 object-cover" />
                             </div>
                         )}
 
                         {/* Actions */}
                         <div className="space-y-3 mt-4">
                             <button
-                                onClick={() => {
-                                    toggleTask(selectedTask.id);
-                                }}
+                                onClick={() => toggleTask(selectedTask.id)}
                                 className={`w-full py-[18px] rounded-[20px] font-bold text-[15px] flex items-center justify-center gap-2 transition-colors ${selectedTask.status === "completed" ? "bg-gray-100 text-gray-500 active:bg-gray-200" : "bg-[#111] text-white active:bg-gray-800"}`}
                             >
                                 {selectedTask.status === "completed" ? (
