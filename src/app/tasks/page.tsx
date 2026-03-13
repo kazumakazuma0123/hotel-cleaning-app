@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { CheckCircle2, ChevronRight, Trash2, Plus, X, ImagePlus, GripVertical } from "lucide-react";
+import { CheckCircle2, Trash2, Plus, X, ImagePlus, GripVertical } from "lucide-react";
 import {
     DndContext,
     closestCenter,
@@ -18,39 +18,41 @@ import {
     verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { db, storage } from "@/lib/firebaseConfig";
+import {
+    collection,
+    addDoc,
+    deleteDoc,
+    updateDoc,
+    doc,
+    onSnapshot,
+    query,
+    orderBy,
+    writeBatch,
+} from "firebase/firestore";
+import {
+    ref,
+    uploadBytes,
+    getDownloadURL,
+} from "firebase/storage";
 
 type Task = {
-    id: number;
+    id: string;
     title: string;
-    time: string;
     status: string;
     image?: string;
+    order: number;
 };
 
-const STORAGE_KEY = "hotel-cleaning-tasks-v1";
+const TASKS_COLLECTION = "tasks";
 
-const defaultTasks: Task[] = [
-    { id: 1, title: "1階ロビーの清掃とゴミ回収", time: "10:00 - 11:00", status: "completed" },
-    { id: 2, title: "各フロアの消耗品（リネン等）の補充", time: "11:00 - 12:00", status: "pending" },
-    { id: 3, title: "共有トイレの点検と清掃", time: "13:00 - 14:00", status: "pending" },
-];
-
-function loadTasks(): Task[] {
-    if (typeof window === "undefined") return defaultTasks;
-    try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) return JSON.parse(saved);
-    } catch { /* ignore */ }
-    return defaultTasks;
-}
-
-function SortableTaskCard({ 
-    task, 
-    onToggle, 
-    onSelect 
-}: { 
-    task: Task; 
-    onToggle: (id: number) => void; 
+function SortableTaskCard({
+    task,
+    onToggle,
+    onSelect,
+}: {
+    task: Task;
+    onToggle: (id: string) => void;
     onSelect: (task: Task) => void;
 }) {
     const {
@@ -121,110 +123,137 @@ function SortableTaskCard({
 }
 
 export default function TasksIndex() {
-    const [tasks, setTasks] = useState<Task[]>(loadTasks);
+    const [tasks, setTasks] = useState<Task[]>([]);
+    const [loading, setLoading] = useState(true);
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [isAddingTask, setIsAddingTask] = useState(false);
     const [newTaskTitle, setNewTaskTitle] = useState("");
     const [newTaskImage, setNewTaskImage] = useState<string | null>(null);
+    const [newTaskImageFile, setNewTaskImageFile] = useState<File | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
-
-    // Persist tasks to localStorage whenever they change
-    useEffect(() => {
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
-        } catch { /* ignore quota errors */ }
-    }, [tasks]);
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
         useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
     );
 
-    const handleDragEnd = (event: DragEndEvent) => {
-        const { active, over } = event;
-        if (over && active.id !== over.id) {
-            setTasks((prev) => {
-                const oldIndex = prev.findIndex((t) => t.id === active.id);
-                const newIndex = prev.findIndex((t) => t.id === over.id);
-                return arrayMove(prev, oldIndex, newIndex);
-            });
-        }
-    };
-
-    const removeTask = (id: number) => {
-        setTasks(tasks.filter(task => task.id !== id));
-        if (selectedTask?.id === id) setSelectedTask(null);
-    };
-
-    const toggleTask = (id: number) => {
-        setTasks(tasks.map(task =>
-            task.id === id
-                ? { ...task, status: task.status === "completed" ? "pending" : "completed" }
-                : task
-        ));
-    };
-
-    const updateTask = (id: number, updates: Partial<Task>) => {
-        setTasks(tasks.map(task =>
-            task.id === id ? { ...task, ...updates } : task
-        ));
-        if (selectedTask?.id === id) {
-            setSelectedTask(prev => prev ? { ...prev, ...updates } : null);
-        }
-    };
-
-    const compressImage = (file: File, maxSize: number = 400, quality: number = 0.6): Promise<string> => {
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement("canvas");
-                    let w = img.width;
-                    let h = img.height;
-                    if (w > h) {
-                        if (w > maxSize) { h = h * (maxSize / w); w = maxSize; }
-                    } else {
-                        if (h > maxSize) { w = w * (maxSize / h); h = maxSize; }
-                    }
-                    canvas.width = w;
-                    canvas.height = h;
-                    const ctx = canvas.getContext("2d")!;
-                    ctx.drawImage(img, 0, 0, w, h);
-                    resolve(canvas.toDataURL("image/jpeg", quality));
-                };
-                img.src = ev.target?.result as string;
-            };
-            reader.readAsDataURL(file);
+    // Real-time listener for Firestore
+    useEffect(() => {
+        const q = query(collection(db, TASKS_COLLECTION), orderBy("order", "asc"));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const tasksData: Task[] = snapshot.docs.map((doc) => ({
+                id: doc.id,
+                ...doc.data(),
+            })) as Task[];
+            setTasks(tasksData);
+            setLoading(false);
         });
+        return () => unsubscribe();
+    }, []);
+
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+
+        const oldIndex = tasks.findIndex((t) => t.id === active.id);
+        const newIndex = tasks.findIndex((t) => t.id === over.id);
+        const reordered = arrayMove(tasks, oldIndex, newIndex);
+
+        // Optimistic update
+        setTasks(reordered);
+
+        // Batch update order in Firestore
+        const batch = writeBatch(db);
+        reordered.forEach((task, index) => {
+            const taskRef = doc(db, TASKS_COLLECTION, task.id);
+            batch.update(taskRef, { order: index });
+        });
+        await batch.commit();
     };
 
-    const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const removeTask = async (id: string) => {
+        if (selectedTask?.id === id) setSelectedTask(null);
+        await deleteDoc(doc(db, TASKS_COLLECTION, id));
+    };
+
+    const toggleTask = async (id: string) => {
+        const task = tasks.find((t) => t.id === id);
+        if (!task) return;
+        const newStatus = task.status === "completed" ? "pending" : "completed";
+
+        // Update local selectedTask if open
+        if (selectedTask?.id === id) {
+            setSelectedTask({ ...selectedTask, status: newStatus });
+        }
+
+        await updateDoc(doc(db, TASKS_COLLECTION, id), { status: newStatus });
+    };
+
+    const updateTask = async (id: string, updates: Partial<Task>) => {
+        if (selectedTask?.id === id) {
+            setSelectedTask((prev) => (prev ? { ...prev, ...updates } : null));
+        }
+        await updateDoc(doc(db, TASKS_COLLECTION, id), updates);
+    };
+
+    const uploadImage = async (file: File): Promise<string> => {
+        const fileName = `tasks/${Date.now()}_${file.name}`;
+        const storageRef = ref(storage, fileName);
+        await uploadBytes(storageRef, file);
+        return getDownloadURL(storageRef);
+    };
+
+    const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        const compressed = await compressImage(file);
-        setNewTaskImage(compressed);
+        // Show local preview
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            setNewTaskImage(ev.target?.result as string);
+        };
+        reader.readAsDataURL(file);
+        // Keep file reference for upload
+        setNewTaskImageFile(file);
     };
 
-    const handleAddTask = () => {
-        if (!newTaskTitle.trim()) return;
-        const newTask: Task = {
-            id: Date.now(),
-            title: newTaskTitle.trim(),
-            time: "時間未定",
-            status: "pending",
-            ...(newTaskImage ? { image: newTaskImage } : {})
-        };
-        setTasks([...tasks, newTask]);
+    const handleAddTask = async () => {
+        if (!newTaskTitle.trim() || isSubmitting) return;
+        setIsSubmitting(true);
+
+        const title = newTaskTitle.trim();
+        const imageFile = newTaskImageFile;
+        const currentOrder = tasks.length;
+
+        // Close form immediately (optimistic)
         setNewTaskTitle("");
         setNewTaskImage(null);
+        setNewTaskImageFile(null);
         setIsAddingTask(false);
+        setIsSubmitting(false);
+
+        try {
+            let imageUrl: string | undefined;
+            if (imageFile) {
+                imageUrl = await uploadImage(imageFile);
+            }
+
+            await addDoc(collection(db, TASKS_COLLECTION), {
+                title,
+                status: "pending",
+                order: currentOrder,
+                ...(imageUrl ? { image: imageUrl } : {}),
+            });
+        } catch (error) {
+            console.error("Failed to add task:", error);
+        }
     };
 
     const resetAddForm = () => {
         setIsAddingTask(false);
         setNewTaskTitle("");
         setNewTaskImage(null);
+        setNewTaskImageFile(null);
     };
 
     return (
@@ -236,94 +265,103 @@ export default function TasksIndex() {
                 </h1>
             </header>
 
-            <div className="space-y-4">
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                    <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-                        {tasks.map((task) => (
-                            <SortableTaskCard
-                                key={task.id}
-                                task={task}
-                                onToggle={toggleTask}
-                                onSelect={setSelectedTask}
-                            />
-                        ))}
-                    </SortableContext>
-                </DndContext>
+            {loading ? (
+                <div className="flex justify-center items-center py-20">
+                    <div className="w-8 h-8 border-2 border-gray-300 border-t-[#111] rounded-full animate-spin" />
+                </div>
+            ) : (
+                <div className="space-y-4">
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                        <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                            {tasks.map((task) => (
+                                <SortableTaskCard
+                                    key={task.id}
+                                    task={task}
+                                    onToggle={toggleTask}
+                                    onSelect={setSelectedTask}
+                                />
+                            ))}
+                        </SortableContext>
+                    </DndContext>
 
-                {/* Add Task Card / Input */}
-                {isAddingTask ? (
-                    <div className="bg-white rounded-2xl p-5 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
-                        <input
-                            type="text"
-                            value={newTaskTitle}
-                            onChange={(e) => setNewTaskTitle(e.target.value)}
-                            placeholder="タスクを入力"
-                            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-[15px] outline-none focus:ring-2 focus:ring-gray-300 transition-all mb-4"
-                            autoFocus
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleAddTask();
-                                if (e.key === 'Escape') resetAddForm();
-                            }}
-                        />
-
-                        {/* Image Preview */}
-                        {newTaskImage && (
-                            <div className="relative mb-4 rounded-xl overflow-hidden">
-                                <img src={newTaskImage} alt="preview" className="w-full max-h-48 object-cover rounded-xl" />
-                                <button
-                                    onClick={() => setNewTaskImage(null)}
-                                    className="absolute top-2 right-2 p-1.5 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
-                                >
-                                    <X className="w-4 h-4" strokeWidth={3} />
-                                </button>
-                            </div>
-                        )}
-
-                        <div className="flex justify-between items-center">
-                            <button
-                                onClick={() => fileInputRef.current?.click()}
-                                className="p-2.5 bg-gray-100 rounded-xl text-gray-500 active:bg-gray-200 transition-colors"
-                            >
-                                <ImagePlus className="w-5 h-5" strokeWidth={2} />
-                            </button>
+                    {/* Add Task Card / Input */}
+                    {isAddingTask ? (
+                        <div className="bg-white rounded-2xl p-5 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
                             <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={handleImageSelect}
+                                type="text"
+                                value={newTaskTitle}
+                                onChange={(e) => setNewTaskTitle(e.target.value)}
+                                placeholder="タスクを入力"
+                                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-[15px] outline-none focus:ring-2 focus:ring-gray-300 transition-all mb-4"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter") handleAddTask();
+                                    if (e.key === "Escape") resetAddForm();
+                                }}
                             />
-                            <div className="flex gap-3">
+
+                            {/* Image Preview */}
+                            {newTaskImage && (
+                                <div className="relative mb-4 rounded-xl overflow-hidden">
+                                    <img src={newTaskImage} alt="preview" className="w-full max-h-48 object-cover rounded-xl" />
+                                    <button
+                                        onClick={() => {
+                                            setNewTaskImage(null);
+                                            setNewTaskImageFile(null);
+                                        }}
+                                        className="absolute top-2 right-2 p-1.5 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
+                                    >
+                                        <X className="w-4 h-4" strokeWidth={3} />
+                                    </button>
+                                </div>
+                            )}
+
+                            <div className="flex justify-between items-center">
                                 <button
-                                    onClick={resetAddForm}
-                                    className="px-4 py-2 text-sm font-semibold text-gray-500 bg-gray-100 rounded-xl active:bg-gray-200 transition-colors"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="p-2.5 bg-gray-100 rounded-xl text-gray-500 active:bg-gray-200 transition-colors"
                                 >
-                                    キャンセル
+                                    <ImagePlus className="w-5 h-5" strokeWidth={2} />
                                 </button>
-                                <button
-                                    onClick={handleAddTask}
-                                    disabled={!newTaskTitle.trim()}
-                                    className="px-4 py-2 text-sm font-bold text-white bg-[#111] rounded-xl active:bg-gray-800 disabled:opacity-50 disabled:active:bg-[#111] transition-colors"
-                                >
-                                    追加
-                                </button>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={handleImageSelect}
+                                />
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={resetAddForm}
+                                        className="px-4 py-2 text-sm font-semibold text-gray-500 bg-gray-100 rounded-xl active:bg-gray-200 transition-colors"
+                                    >
+                                        キャンセル
+                                    </button>
+                                    <button
+                                        onClick={handleAddTask}
+                                        disabled={!newTaskTitle.trim() || isSubmitting}
+                                        className="px-4 py-2 text-sm font-bold text-white bg-[#111] rounded-xl active:bg-gray-800 disabled:opacity-50 disabled:active:bg-[#111] transition-colors"
+                                    >
+                                        {isSubmitting ? "保存中..." : "追加"}
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ) : (
-                    <div
-                        onClick={() => setIsAddingTask(true)}
-                        className="bg-white/50 border-2 border-dashed border-gray-200 rounded-2xl p-4 active:scale-[0.98] transition-all flex items-center justify-center gap-3 cursor-pointer hover:bg-white"
-                    >
-                        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                            <Plus className="w-5 h-5 text-gray-500" strokeWidth={2.5} />
+                    ) : (
+                        <div
+                            onClick={() => setIsAddingTask(true)}
+                            className="bg-white/50 border-2 border-dashed border-gray-200 rounded-2xl p-4 active:scale-[0.98] transition-all flex items-center justify-center gap-3 cursor-pointer hover:bg-white"
+                        >
+                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                                <Plus className="w-5 h-5 text-gray-500" strokeWidth={2.5} />
+                            </div>
+                            <span className="font-bold text-[15px] text-gray-500 tracking-wide">
+                                タスクを追加
+                            </span>
                         </div>
-                        <span className="font-bold text-[15px] text-gray-500 tracking-wide">
-                            タスクを追加
-                        </span>
-                    </div>
-                )}
-            </div>
+                    )}
+                </div>
+            )}
 
             {/* Task Details Modal */}
             {selectedTask && (
@@ -365,7 +403,6 @@ export default function TasksIndex() {
                             <button
                                 onClick={() => {
                                     toggleTask(selectedTask.id);
-                                    setSelectedTask({ ...selectedTask, status: selectedTask.status === "completed" ? "pending" : "completed" });
                                 }}
                                 className={`w-full py-[18px] rounded-[20px] font-bold text-[15px] flex items-center justify-center gap-2 transition-colors ${selectedTask.status === "completed" ? "bg-gray-100 text-gray-500 active:bg-gray-200" : "bg-[#111] text-white active:bg-gray-800"}`}
                             >
