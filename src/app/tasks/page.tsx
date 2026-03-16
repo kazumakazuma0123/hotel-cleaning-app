@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { CheckCircle2, Trash2, Plus, X, ImagePlus, GripVertical } from "lucide-react";
+import Image from "next/image";
 import {
     DndContext,
     closestCenter,
@@ -86,8 +87,14 @@ function SortableTaskCard({
 
             {/* Image Thumbnail */}
             {task.image_url && (
-                <div className="shrink-0 w-12 h-12 rounded-xl overflow-hidden">
-                    <img src={task.image_url} alt="" className="w-full h-full object-cover" />
+                <div className="shrink-0 w-12 h-12 rounded-xl overflow-hidden relative">
+                    <Image
+                        src={task.image_url}
+                        alt=""
+                        fill
+                        className="object-cover"
+                        sizes="48px"
+                    />
                 </div>
             )}
 
@@ -120,7 +127,7 @@ export default function TasksIndex() {
         useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
     );
 
-    // Fetch tasks from Supabase
+    // Initial fetch
     const fetchTasks = useCallback(async () => {
         const { data, error } = await supabase
             .from("tasks")
@@ -135,7 +142,26 @@ export default function TasksIndex() {
         setLoading(false);
     }, []);
 
-    // Initial fetch + real-time subscription
+    // Incremental update handler
+    const handleRealtimeChange = useCallback((payload: any) => {
+        const { eventType, new: newRecord, old: oldRecord } = payload;
+
+        setTasks((currentTasks) => {
+            switch (eventType) {
+                case "INSERT":
+                    // Avoid duplicate if we just created it locally
+                    if (currentTasks.some(t => t.id === newRecord.id)) return currentTasks;
+                    return [...currentTasks, newRecord as Task].sort((a, b) => a.sort_order - b.sort_order);
+                case "UPDATE":
+                    return currentTasks.map((t) => (t.id === newRecord.id ? { ...t, ...newRecord } : t));
+                case "DELETE":
+                    return currentTasks.filter((t) => t.id !== oldRecord.id);
+                default:
+                    return currentTasks;
+            }
+        });
+    }, []);
+
     useEffect(() => {
         fetchTasks();
 
@@ -144,8 +170,8 @@ export default function TasksIndex() {
             .on(
                 "postgres_changes",
                 { event: "*", schema: "public", table: "tasks" },
-                () => {
-                    fetchTasks();
+                (payload) => {
+                    handleRealtimeChange(payload);
                 }
             )
             .subscribe();
@@ -153,7 +179,7 @@ export default function TasksIndex() {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [fetchTasks]);
+    }, [fetchTasks, handleRealtimeChange]);
 
     const handleDragEnd = async (event: DragEndEvent) => {
         const { active, over } = event;
@@ -166,17 +192,32 @@ export default function TasksIndex() {
         // Optimistic update
         setTasks(reordered);
 
-        // Update sort_order in Supabase
-        const updates = reordered.map((task, index) =>
-            supabase.from("tasks").update({ sort_order: index }).eq("id", task.id)
-        );
-        await Promise.all(updates);
+        // Optimized batch update using upsert
+        const updates = reordered.map((task, index) => ({
+            id: task.id,
+            title: task.title,
+            status: task.status,
+            image_url: task.image_url,
+            sort_order: index,
+        }));
+
+        const { error } = await supabase.from("tasks").upsert(updates);
+        if (error) {
+            console.error("Failed to update sort order:", error.message);
+            // Revert on error
+            fetchTasks();
+        }
     };
 
     const removeTask = async (id: string) => {
         if (selectedTask?.id === id) setSelectedTask(null);
+        // Optimistic update
         setTasks((prev) => prev.filter((t) => t.id !== id));
-        await supabase.from("tasks").delete().eq("id", id);
+        const { error } = await supabase.from("tasks").delete().eq("id", id);
+        if (error) {
+            console.error("Failed to delete task:", error.message);
+            fetchTasks();
+        }
     };
 
     const toggleTask = async (id: string) => {
@@ -187,20 +228,30 @@ export default function TasksIndex() {
         if (selectedTask?.id === id) {
             setSelectedTask({ ...selectedTask, status: newStatus });
         }
+        // Optimistic update
         setTasks((prev) =>
             prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t))
         );
-        await supabase.from("tasks").update({ status: newStatus }).eq("id", id);
+        const { error } = await supabase.from("tasks").update({ status: newStatus }).eq("id", id);
+        if (error) {
+            console.error("Failed to toggle task:", error.message);
+            fetchTasks();
+        }
     };
 
     const updateTask = async (id: string, updates: Partial<Task>) => {
         if (selectedTask?.id === id) {
             setSelectedTask((prev) => (prev ? { ...prev, ...updates } : null));
         }
+        // Optimistic update
         setTasks((prev) =>
             prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
         );
-        await supabase.from("tasks").update(updates).eq("id", id);
+        const { error } = await supabase.from("tasks").update(updates).eq("id", id);
+        if (error) {
+            console.error("Failed to update task:", error.message);
+            fetchTasks();
+        }
     };
 
     const uploadImage = async (file: File): Promise<string | null> => {
@@ -242,12 +293,12 @@ export default function TasksIndex() {
                 imageUrl = await uploadImage(newTaskImageFile);
             }
 
-            const { error } = await supabase.from("tasks").insert({
+            const { data, error } = await supabase.from("tasks").insert({
                 title: newTaskTitle.trim(),
                 status: "pending",
                 sort_order: tasks.length,
                 image_url: imageUrl,
-            });
+            }).select().single();
 
             if (error) {
                 console.error("Failed to add task:", error.message);
@@ -255,11 +306,14 @@ export default function TasksIndex() {
                 return;
             }
 
+            // The real-time subscription will handle the UI update if it works correctly,
+            // but for a better UX with current setup, we can also update locally or rely on the hook.
+            // Since we use handleRealtimeChange, it will be added when the postgres event arrives.
+            
             setNewTaskTitle("");
             setNewTaskImage(null);
             setNewTaskImageFile(null);
             setIsAddingTask(false);
-            await fetchTasks();
         } catch (err) {
             console.error("Error:", err);
             alert("タスクの保存に失敗しました");
@@ -321,14 +375,14 @@ export default function TasksIndex() {
 
                             {/* Image Preview */}
                             {newTaskImage && (
-                                <div className="relative mb-4 rounded-xl overflow-hidden">
-                                    <img src={newTaskImage} alt="preview" className="w-full max-h-48 object-cover rounded-xl" />
+                                <div className="relative mb-4 rounded-xl overflow-hidden aspect-video">
+                                    <Image src={newTaskImage} alt="preview" fill className="object-cover" />
                                     <button
                                         onClick={() => {
                                             setNewTaskImage(null);
                                             setNewTaskImageFile(null);
                                         }}
-                                        className="absolute top-2 right-2 p-1.5 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
+                                        className="absolute top-2 right-2 p-1.5 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors z-10"
                                     >
                                         <X className="w-4 h-4" strokeWidth={3} />
                                     </button>
@@ -412,8 +466,13 @@ export default function TasksIndex() {
 
                         {/* Image */}
                         {selectedTask.image_url && (
-                            <div className="mb-6 rounded-2xl overflow-hidden">
-                                <img src={selectedTask.image_url} alt="" className="w-full max-h-56 object-cover" />
+                            <div className="mb-6 rounded-2xl overflow-hidden relative aspect-video">
+                                <Image
+                                    src={selectedTask.image_url}
+                                    alt=""
+                                    fill
+                                    className="object-cover"
+                                />
                             </div>
                         )}
 

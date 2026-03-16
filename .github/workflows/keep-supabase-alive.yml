@@ -1,0 +1,19 @@
+name: Keep Supabase Alive
+
+on:
+  schedule:
+    # Runs at 00:00 every Monday (UTC)
+    - cron: '0 0 * * 1'
+  workflow_dispatch: # Allows manual triggering for testing
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase Database
+        run: |
+          # Note: Supabase Anon Key is designed to be public-facing. 
+          # We include it here directly to ensure the keep-alive works without manual secret configuration.
+          curl -X GET "https://xldmgjhllvtwjividgfi.supabase.co/rest/v1/tasks?select=id&limit=1" \
+          -H "apikey: sb_publishable_7oEQrtAloOTAUdWdcUkLfg_q-ceqAhp" \
+          -H "Authorization: Bearer sb_publishable_7oEQrtAloOTAUdWdcUkLfg_q-ceqAhp"
