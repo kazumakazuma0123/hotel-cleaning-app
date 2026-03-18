@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, memo } from "react";
 import { CheckCircle2, Trash2, Plus, X, ImagePlus, GripVertical } from "lucide-react";
 import Image from "next/image";
 import {
@@ -29,7 +29,7 @@ type Task = {
     sort_order: number;
 };
 
-function SortableTaskCard({
+const SortableTaskCard = memo(function SortableTaskCard({
     task,
     onToggle,
     onSelect,
@@ -94,6 +94,7 @@ function SortableTaskCard({
                         fill
                         className="object-cover"
                         sizes="48px"
+                        loading="lazy"
                     />
                 </div>
             )}
@@ -109,7 +110,7 @@ function SortableTaskCard({
             </div>
         </div>
     );
-}
+});
 
 export default function TasksIndex() {
     const [tasks, setTasks] = useState<Task[]>([]);
