@@ -5,15 +5,21 @@ import Link from "next/link";
 import { useRoomStore } from "@/store/useRoomStore";
 import { supabase } from "@/lib/supabase";
 
-type Booking = {
-  room_id: string;
-  check_in_datetime: string;
-};
+// Removed unused Booking type
+
 
 export default function Home() {
   const rooms = useRoomStore((state) => state.rooms);
-  const [roomBookingInfo, setRoomBookingInfo] = useState<Record<string, { 
-    checkIn: string, 
+  const fetchRooms = useRoomStore((state) => state.fetchRooms);
+
+  // Fetch rooms on mount
+  useEffect(() => {
+    fetchRooms();
+  }, [fetchRooms]);
+
+  const [roomBookingInfo, setRoomBookingInfo] = useState<Record<string, {
+    checkInDate: string,
+    checkIn: string,
     lastUsage: string,
     guests: number | null,
     nights: number | null
@@ -46,13 +52,14 @@ export default function Home() {
         .lt("check_in_datetime", new Date().toISOString())
         .order("check_in_datetime", { ascending: false });
 
-      const infoMap: Record<string, { checkIn: string, lastUsage: string, guests: number | null, nights: number | null }> = {};
-      
+      const infoMap: Record<string, { checkInDate: string, checkIn: string, lastUsage: string, guests: number | null, nights: number | null }> = {};
+
       // Set upcoming info
-      data?.forEach((b: any) => {
+      data?.forEach((b) => {
         if (!infoMap[b.room_id]) {
           const date = new Date(b.check_in_datetime);
-          infoMap[b.room_id] = { 
+          infoMap[b.room_id] = {
+            checkInDate: `${date.getMonth() + 1}/${date.getDate()}`,
             checkIn: date.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }),
             lastUsage: "",
             guests: b.guest_count,
@@ -62,8 +69,8 @@ export default function Home() {
       });
 
       // Set last usage date
-      pastData?.forEach((b: any) => {
-        const roomInfo = infoMap[b.room_id] || { checkIn: "", lastUsage: "", guests: null, nights: null };
+      pastData?.forEach((b) => {
+        const roomInfo = infoMap[b.room_id] || { checkInDate: "", checkIn: "", lastUsage: "", guests: null, nights: null };
         if (!roomInfo.lastUsage) {
           const date = new Date(b.check_in_datetime);
           roomInfo.lastUsage = `${date.getMonth() + 1}/${date.getDate()}`;
@@ -140,23 +147,29 @@ export default function Home() {
                 <h2 className="text-[40px] font-light text-[#111111] tracking-tight leading-none mb-3">
                   Room {room.id}
                 </h2>
-                <div className="flex flex-col items-center gap-1">
-                  <div className="flex items-center text-[#aaaaaa] text-[12px] font-semibold uppercase tracking-wider">
-                    <span>IN {roomBookingInfo[room.id]?.checkIn || room.checkIn || "15:00"}</span>
-                    <span className="mx-1.5 font-normal text-gray-300">/</span>
-                    <span>OUT {room.checkOut || "11:00"}</span>
-                  </div>
-                  {(roomBookingInfo[room.id]?.guests || roomBookingInfo[room.id]?.nights) && (
-                    <div className="flex items-center gap-3 text-[11px] font-bold text-[#888888] bg-[#f0f0f0] px-3 py-0.5 rounded-full mt-1">
-                      {roomBookingInfo[room.id]?.guests && (
-                        <span>👤 {roomBookingInfo[room.id]?.guests}名</span>
-                      )}
-                      {roomBookingInfo[room.id]?.nights && (
-                        <span>🌙 {roomBookingInfo[room.id]?.nights}泊</span>
-                      )}
+
+                {/* 次の利用予定 */}
+                {roomBookingInfo[room.id]?.checkInDate ? (
+                  <div className="flex flex-col items-center gap-1.5">
+                    <div className="text-[12px] font-bold text-[#2f667c] bg-[#e8f0f4] px-3 py-1 rounded-full tracking-wide">
+                      次回 {roomBookingInfo[room.id].checkInDate} / {roomBookingInfo[room.id].checkIn}
                     </div>
-                  )}
-                </div>
+                    {(roomBookingInfo[room.id]?.guests || roomBookingInfo[room.id]?.nights) && (
+                      <div className="flex items-center gap-3 text-[11px] font-bold text-[#888888] bg-[#f0f0f0] px-3 py-0.5 rounded-full">
+                        {roomBookingInfo[room.id]?.guests && (
+                          <span>{roomBookingInfo[room.id]?.guests}名</span>
+                        )}
+                        {roomBookingInfo[room.id]?.nights && (
+                          <span>{roomBookingInfo[room.id]?.nights}泊</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-[12px] font-semibold text-gray-300 tracking-wider">
+                    予約なし
+                  </div>
+                )}
               </div>
             </div>
           </Link>

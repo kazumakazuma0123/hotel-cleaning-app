@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback, memo } from "react";
+import React, { useState, useRef, useEffect, memo } from "react";
 import { CheckCircle2, Trash2, Plus, X, ImagePlus, GripVertical } from "lucide-react";
 import Image from "next/image";
 import {
@@ -20,14 +20,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { supabase } from "@/lib/supabase";
-
-type Task = {
-    id: string;
-    title: string;
-    status: string;
-    image_url?: string | null;
-    sort_order: number;
-};
+import { useTaskStore, type Task } from "@/store/useTaskStore";
 
 const SortableTaskCard = memo(function SortableTaskCard({
     task,
@@ -113,8 +106,16 @@ const SortableTaskCard = memo(function SortableTaskCard({
 });
 
 export default function TasksIndex() {
-    const [tasks, setTasks] = useState<Task[]>([]);
-    const [loading, setLoading] = useState(true);
+    const tasks = useTaskStore((state) => state.tasks);
+    const hasCachedData = useTaskStore((state) => state.hasCachedData);
+    const fetchTasks = useTaskStore((state) => state.fetchTasks);
+    const applyRealtimeChange = useTaskStore((state) => state.applyRealtimeChange);
+    const reorderTasks = useTaskStore((state) => state.reorderTasks);
+    const addTaskOptimistic = useTaskStore((state) => state.addTaskOptimistic);
+    const removeTaskOptimistic = useTaskStore((state) => state.removeTaskOptimistic);
+    const updateTaskOptimistic = useTaskStore((state) => state.updateTaskOptimistic);
+
+    const [loading, setLoading] = useState(!hasCachedData);
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [isAddingTask, setIsAddingTask] = useState(false);
     const [newTaskTitle, setNewTaskTitle] = useState("");
@@ -128,43 +129,8 @@ export default function TasksIndex() {
         useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
     );
 
-    // Initial fetch
-    const fetchTasks = useCallback(async () => {
-        const { data, error } = await supabase
-            .from("tasks")
-            .select("*")
-            .order("sort_order", { ascending: true });
-
-        if (error) {
-            console.error("Failed to fetch tasks:", error.message);
-        } else {
-            setTasks(data as Task[]);
-        }
-        setLoading(false);
-    }, []);
-
-    // Incremental update handler
-    const handleRealtimeChange = useCallback((payload: any) => {
-        const { eventType, new: newRecord, old: oldRecord } = payload;
-
-        setTasks((currentTasks) => {
-            switch (eventType) {
-                case "INSERT":
-                    // Avoid duplicate if we just created it locally
-                    if (currentTasks.some(t => t.id === newRecord.id)) return currentTasks;
-                    return [...currentTasks, newRecord as Task].sort((a, b) => a.sort_order - b.sort_order);
-                case "UPDATE":
-                    return currentTasks.map((t) => (t.id === newRecord.id ? { ...t, ...newRecord } : t));
-                case "DELETE":
-                    return currentTasks.filter((t) => t.id !== oldRecord.id);
-                default:
-                    return currentTasks;
-            }
-        });
-    }, []);
-
     useEffect(() => {
-        fetchTasks();
+        fetchTasks().finally(() => setLoading(false));
 
         const channel = supabase
             .channel("tasks-realtime")
@@ -172,7 +138,7 @@ export default function TasksIndex() {
                 "postgres_changes",
                 { event: "*", schema: "public", table: "tasks" },
                 (payload) => {
-                    handleRealtimeChange(payload);
+                    applyRealtimeChange(payload);
                 }
             )
             .subscribe();
@@ -180,7 +146,7 @@ export default function TasksIndex() {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [fetchTasks, handleRealtimeChange]);
+    }, [fetchTasks, applyRealtimeChange]);
 
     const handleDragEnd = async (event: DragEndEvent) => {
         const { active, over } = event;
@@ -191,7 +157,7 @@ export default function TasksIndex() {
         const reordered = arrayMove(tasks, oldIndex, newIndex);
 
         // Optimistic update
-        setTasks(reordered);
+        reorderTasks(reordered);
 
         // Optimized batch update using upsert
         const updates = reordered.map((task, index) => ({
@@ -213,7 +179,7 @@ export default function TasksIndex() {
     const removeTask = async (id: string) => {
         if (selectedTask?.id === id) setSelectedTask(null);
         // Optimistic update
-        setTasks((prev) => prev.filter((t) => t.id !== id));
+        removeTaskOptimistic(id);
         const { error } = await supabase.from("tasks").delete().eq("id", id);
         if (error) {
             console.error("Failed to delete task:", error.message);
@@ -230,12 +196,11 @@ export default function TasksIndex() {
             setSelectedTask({ ...selectedTask, status: newStatus });
         }
         // Optimistic update
-        setTasks((prev) =>
-            prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t))
-        );
+        updateTaskOptimistic(id, { status: newStatus });
         const { error } = await supabase.from("tasks").update({ status: newStatus }).eq("id", id);
         if (error) {
             console.error("Failed to toggle task:", error.message);
+            alert("エラー: 保存できませんでした。URLやキーの設定、またはテーブルのRLS設定を確認してください。");
             fetchTasks();
         }
     };
@@ -245,9 +210,7 @@ export default function TasksIndex() {
             setSelectedTask((prev) => (prev ? { ...prev, ...updates } : null));
         }
         // Optimistic update
-        setTasks((prev) =>
-            prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
-        );
+        updateTaskOptimistic(id, updates);
         const { error } = await supabase.from("tasks").update(updates).eq("id", id);
         if (error) {
             console.error("Failed to update task:", error.message);
@@ -292,6 +255,9 @@ export default function TasksIndex() {
             let imageUrl: string | null = null;
             if (newTaskImageFile) {
                 imageUrl = await uploadImage(newTaskImageFile);
+                if (!imageUrl) {
+                    alert("画像のアップロードに失敗しました。画像なしで保存します。");
+                }
             }
 
             const { data, error } = await supabase.from("tasks").insert({
@@ -307,10 +273,11 @@ export default function TasksIndex() {
                 return;
             }
 
-            // The real-time subscription will handle the UI update if it works correctly,
-            // but for a better UX with current setup, we can also update locally or rely on the hook.
-            // Since we use handleRealtimeChange, it will be added when the postgres event arrives.
-            
+            // Optimistic update — don't rely solely on Realtime
+            if (data) {
+                addTaskOptimistic(data as Task);
+            }
+
             setNewTaskTitle("");
             setNewTaskImage(null);
             setNewTaskImageFile(null);

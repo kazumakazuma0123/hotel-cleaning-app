@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { supabase } from "@/lib/supabase";
 
 type RoomStatus = "before-cleaning" | "cleaning" | "cleaned" | "inspected" | "occupied";
 
@@ -8,30 +8,58 @@ interface Room {
     status: RoomStatus;
     checkIn?: string;
     checkOut?: string;
+    checked_items?: string[];
 }
 
 interface RoomStore {
     rooms: Room[];
-    updateRoomStatus: (id: string, newStatus: RoomStatus) => void;
+    fetchRooms: () => Promise<void>;
+    updateRoomStatus: (id: string, newStatus: RoomStatus, checkedItems?: string[]) => Promise<void>;
 }
 
-export const useRoomStore = create<RoomStore>()(
-    persist(
-        (set) => ({
-            rooms: [
-                { id: "001", status: "occupied", checkIn: "14:00", checkOut: "10:00" },
-                { id: "002", status: "cleaning", checkIn: "15:00", checkOut: "11:00" },
-                { id: "005", status: "before-cleaning", checkIn: "16:00", checkOut: "11:00" },
-            ],
-            updateRoomStatus: (id, newStatus) =>
-                set((state) => ({
-                    rooms: state.rooms.map((room) =>
-                        room.id === id ? { ...room, status: newStatus } : room
-                    ),
-                })),
-        }),
-        {
-            name: "hotel-rooms-storage-v6",
+export const useRoomStore = create<RoomStore>((set, get) => ({
+    rooms: [],
+    
+    fetchRooms: async () => {
+        const { data, error } = await supabase
+            .from("rooms")
+            .select("*")
+            .order("id", { ascending: true });
+
+        if (error) {
+            console.error("Failed to fetch rooms:", error.message);
+            return;
         }
-    )
-);
+
+        if (data) {
+            set({ rooms: data as Room[] });
+        }
+    },
+
+    updateRoomStatus: async (id, newStatus, checkedItems) => {
+        // Optimistic update
+        const prevRooms = get().rooms;
+        set((state) => ({
+            rooms: state.rooms.map((room) =>
+                room.id === id ? { ...room, status: newStatus, checked_items: checkedItems || room.checked_items } : room
+            ),
+        }));
+
+        const updates: { status: RoomStatus; checked_items?: string[] } = { status: newStatus };
+        if (checkedItems !== undefined) {
+            updates.checked_items = checkedItems;
+        }
+
+        const { error } = await supabase
+            .from("rooms")
+            .upsert({ id, ...updates })
+            .select();
+
+        if (error) {
+            console.error("Failed to update room status:", error.message);
+            // Revert on error
+            set({ rooms: prevRooms });
+        }
+    },
+}));
+
