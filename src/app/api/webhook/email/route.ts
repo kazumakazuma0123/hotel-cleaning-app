@@ -9,18 +9,20 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const formData = await req.formData().catch(() => null);
         let subject = "";
         let body = "";
+        const contentType = req.headers.get("content-type") || "";
 
-        if (formData) {
-            subject = formData.get("subject") as string;
-            body = formData.get("text") as string;
-        } else {
-            // Handle JSON from GAS
+        if (contentType.includes("application/json")) {
             const json = await req.json().catch(() => ({}));
             subject = json.subject || "";
             body = json.body || "";
+        } else {
+            const formData = await req.formData().catch(() => null);
+            if (formData) {
+                subject = (formData.get("subject") as string) || "";
+                body = (formData.get("text") as string) || "";
+            }
         }
 
         if (!body) {
@@ -102,10 +104,10 @@ async function handleCancellation(body: string) {
 
         const { error } = await supabase
             .from("bookings")
-            .update({ status: "cancelled", updated_at: new Date().toISOString() })
+            .delete()
             .eq("reservation_number", reservation_number);
 
-        if (error) console.error("DB Update Error (Cancel):", error.message);
+        if (error) console.error("DB Delete Error (Cancel):", error.message);
     }
 }
 

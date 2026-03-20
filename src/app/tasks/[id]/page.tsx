@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Check, AlertCircle, Play, RefreshCw, CheckCircle2 } from "lucide-react";
+import { ChevronLeft, Check, AlertCircle, RefreshCw, CheckCircle2 } from "lucide-react";
 import { useRoomStore } from "@/store/useRoomStore";
 
 type CheckItem = {
@@ -20,6 +20,7 @@ export default function RoomTaskPage({ params }: { params: Promise<{ id: string 
     
     const room = useRoomStore((state) => state.rooms.find((r) => r.id === id));
     const updateRoomStatus = useRoomStore((state) => state.updateRoomStatus);
+    const fetchRooms = useRoomStore((state) => state.fetchRooms);
     
     const [showSuccess, setShowSuccess] = useState(false);
     const [successMessage, setSuccessMessage] = useState({ title: "", description: "" });
@@ -33,12 +34,33 @@ export default function RoomTaskPage({ params }: { params: Promise<{ id: string 
         { id: "c6", label: "部屋全体に掃除機をかけた（奥から手前へ）", checked: false },
     ]);
 
-    // Pre-check items if the task is already complete
+    // Initial fetch if rooms are empty
     useEffect(() => {
-        if (room?.status === "cleaned") {
-             setItems(prev => prev.map(i => ({ ...i, checked: true })));
-        }
-    }, [room?.status]);
+        fetchRooms();
+    }, [fetchRooms]);
+
+    // Initialize items from room data
+    useEffect(() => {
+        if (!room) return;
+        
+        const checkedItemIds = room.checked_items || [];
+        const isBasicallyDone = ["cleaned", "inspected", "occupied"].includes(room.status);
+        
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing with Supabase room data
+        setItems(prev => {
+            const hasChanges = prev.some(item => {
+                const shouldBeChecked = checkedItemIds.includes(item.id) || isBasicallyDone;
+                return item.checked !== shouldBeChecked;
+            });
+            
+            if (!hasChanges) return prev;
+            
+            return prev.map(item => ({
+                ...item,
+                checked: checkedItemIds.includes(item.id) || isBasicallyDone
+            }));
+        });
+    }, [room?.status, room?.checked_items, room]); 
 
     if (!room) {
         return (
@@ -47,18 +69,23 @@ export default function RoomTaskPage({ params }: { params: Promise<{ id: string 
                     <Link href="/" className="flex items-center text-black active:opacity-50 transition-opacity -ml-2">
                         <ChevronLeft className="w-8 h-8" strokeWidth={1.5} />
                     </Link>
-                    <span className="font-bold text-black text-lg tracking-tight">Error</span>
+                    <span className="font-bold text-black text-lg tracking-tight">Loading...</span>
                     <div className="w-8"></div>
                 </div>
-                <div className="p-6 text-center mt-20 text-gray-500 font-medium">Room not found</div>
+                <div className="p-6 text-center mt-20 text-gray-500 font-medium">Loading room data...</div>
             </div>
         );
     }
 
     const toggleItem = (itemId: string) => {
-        setItems(items.map(item =>
+        const newItems = items.map(item =>
             item.id === itemId ? { ...item, checked: !item.checked } : item
-        ));
+        );
+        setItems(newItems);
+        
+        // Sync to Supabase
+        const checkedItemIds = newItems.filter(i => i.checked).map(i => i.id);
+        updateRoomStatus(id, room.status, checkedItemIds);
     };
 
     const completedCount = items.filter(i => i.checked).length;
@@ -69,12 +96,15 @@ export default function RoomTaskPage({ params }: { params: Promise<{ id: string 
         setShowSuccess(true);
         setTimeout(() => {
             setShowSuccess(false);
-            updateRoomStatus(id, newStatus);
+            // When moving to cleaned, ensure all items are marked as checked in DB
+            const checkedItemIds = newStatus === "cleaned" ? items.map(i => i.id) : items.filter(i => i.checked).map(i => i.id);
+            updateRoomStatus(id, newStatus, checkedItemIds);
             if (shouldRedirect) {
                 router.push("/");
             }
         }, 1500);
     };
+
 
     const renderHeader = () => (
         <div className="bg-[#fdfdfd] sticky top-0 z-40 px-6 h-16 flex items-center justify-between">
