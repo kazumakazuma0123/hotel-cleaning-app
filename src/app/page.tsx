@@ -152,7 +152,7 @@ export default function Home() {
                 {roomBookingInfo[room.id]?.checkInDate ? (
                   <div className="flex flex-col items-center gap-1.5">
                     <div className="text-[12px] font-bold text-[#2f667c] bg-[#e8f0f4] px-3 py-1 rounded-full tracking-wide">
-                      次回 {roomBookingInfo[room.id].checkInDate} / {roomBookingInfo[room.id].checkIn}
+                      next<span className="text-[10px] font-medium text-[#5a8a9a] ml-0.5">(β版)</span>  {roomBookingInfo[room.id].checkInDate} / {roomBookingInfo[room.id].checkIn}
                     </div>
                     {(roomBookingInfo[room.id]?.guests || roomBookingInfo[room.id]?.nights) && (
                       <div className="flex items-center gap-3 text-[11px] font-bold text-[#888888] bg-[#f0f0f0] px-3 py-0.5 rounded-full">
