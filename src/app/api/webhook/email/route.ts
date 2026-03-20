@@ -45,10 +45,33 @@ export async function POST(req: NextRequest) {
     }
 }
 
+// ヴィラ名 → Room ID マッピング
+const VILLA_TO_ROOM: Record<string, string> = {
+    "1": "001",
+    "2": "002",
+    "5": "005",
+};
+
+function resolveRoomId(text: string): string {
+    // 「ヴィラ1」「ヴィラ２」「Villa 5」などからRoom IDを解決
+    const villaMatch = text.match(/(?:ヴィラ|ビラ|villa)\s*([０-９\d]+)/i);
+    if (villaMatch) {
+        // 全角数字を半角に変換
+        const num = villaMatch[1].replace(/[０-９]/g, (c) =>
+            String.fromCharCode(c.charCodeAt(0) - 0xFEE0)
+        );
+        if (VILLA_TO_ROOM[num]) return VILLA_TO_ROOM[num];
+    }
+
+    // 「客室番号: 001」形式
+    const roomMatch = text.match(/(?:客室(?:名|番号)|Room(?: Name| Number| #)?)[:：]\s*(\d{3})/i);
+    if (roomMatch) return roomMatch[1];
+
+    return "";
+}
+
 async function handleNewBooking(body: string) {
-    // Flexible parsing strategy for different OTAs
     let reservation_number = "";
-    let room_id = "";
     let check_in_datetime: Date | null = null;
     let check_out_datetime: Date | null = null;
     let guest_count: number | null = null;
@@ -58,9 +81,8 @@ async function handleNewBooking(body: string) {
     const resMatch = body.match(/(?:予約番号|Reservation (?:Number|ID))[:：]\s*(\w+)/i);
     if (resMatch) reservation_number = resMatch[1];
 
-    // 2. Room ID (Looking for "001", "002", "005")
-    const roomMatch = body.match(/(?:客室(?:名|番号)|Room(?: Name| Number| #)?)[:：]\s*(\d{3})/i);
-    if (roomMatch) room_id = roomMatch[1];
+    // 2. Room ID（ヴィラ名 or 客室番号）
+    const room_id = resolveRoomId(body);
 
     // 3. Guest Count
     const guestMatch = body.match(/(?:宿泊人数|Guests|Adults)[:：]\s*(\d+)/i);
