@@ -125,7 +125,7 @@ async function handleNewBooking(body: string) {
         return { action: "booking_saved", parsed };
     }
 
-    return { action: "booking_parse_failed", parsed };
+    return { action: "booking_parse_failed", parsed, body_preview: body.substring(0, 800) };
 }
 
 async function handleCancellation(body: string) {
