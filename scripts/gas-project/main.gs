@@ -47,7 +47,7 @@ function forwardBookingEmails() {
       var code = response.getResponseCode();
 
       if (code === 200) {
-        Logger.log("転送成功: " + subject);
+        Logger.log("転送成功: " + subject + " → " + response.getContentText());
       } else {
         Logger.log("エラー " + code + ": " + response.getContentText());
       }

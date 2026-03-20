@@ -32,13 +32,16 @@ export async function POST(req: NextRequest) {
         console.log("Received Email Webhook:", subject);
 
         // Parsing logic for Temairazu
+        let result: { action: string; parsed: Record<string, unknown> };
         if (subject.includes("予約通知") || subject.includes("予約確定")) {
-            await handleNewBooking(body);
+            result = await handleNewBooking(body);
         } else if (subject.includes("キャンセル")) {
-            await handleCancellation(body);
+            result = await handleCancellation(body);
+        } else {
+            result = { action: "skipped", parsed: { reason: "件名が予約通知/予約確定/キャンセルに該当しない", subject } };
         }
 
-        return NextResponse.json({ message: "OK" });
+        return NextResponse.json({ message: "OK", ...result });
     } catch (err) {
         console.error("Webhook Error:", err);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
@@ -101,6 +104,8 @@ async function handleNewBooking(body: string) {
         total_nights = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     }
 
+    const parsed = { reservation_number, room_id, guest_count, check_in: checkInMatch?.[1] || null, check_out: checkOutMatch?.[1] || null };
+
     if (reservation_number && room_id && check_in_datetime) {
         const { error } = await supabase.from("bookings").upsert({
             reservation_number,
@@ -113,9 +118,14 @@ async function handleNewBooking(body: string) {
             updated_at: new Date().toISOString(),
         });
 
-
-        if (error) console.error("DB Update Error (New):", error.message);
+        if (error) {
+            console.error("DB Update Error (New):", error.message);
+            return { action: "booking_error", parsed: { ...parsed, error: error.message } };
+        }
+        return { action: "booking_saved", parsed };
     }
+
+    return { action: "booking_parse_failed", parsed };
 }
 
 async function handleCancellation(body: string) {
@@ -129,7 +139,13 @@ async function handleCancellation(body: string) {
             .delete()
             .eq("reservation_number", reservation_number);
 
-        if (error) console.error("DB Delete Error (Cancel):", error.message);
+        if (error) {
+            console.error("DB Delete Error (Cancel):", error.message);
+            return { action: "cancel_error", parsed: { reservation_number, error: error.message } };
+        }
+        return { action: "cancel_deleted", parsed: { reservation_number } };
     }
+
+    return { action: "cancel_parse_failed", parsed: { reason: "予約番号が見つからない" } };
 }
 
