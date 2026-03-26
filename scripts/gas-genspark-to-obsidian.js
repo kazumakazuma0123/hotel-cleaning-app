@@ -18,12 +18,14 @@
 
 // ========== 設定 ==========
 // GASの「プロジェクトの設定 → スクリプトプロパティ」に以下を登録:
-//   GITHUB_TOKEN, LINE_CHANNEL_ACCESS_TOKEN, SUPABASE_ANON_KEY
+//   GITHUB_TOKEN, LINE_CHANNEL_ACCESS_TOKEN, SUPABASE_ANON_KEY, SLACK_WEBHOOK_URL
 var GITHUB_TOKEN = PropertiesService.getScriptProperties().getProperty("GITHUB_TOKEN");
 var GITHUB_REPO = "kazumakazuma0123/obsidian-project";
 
 var LINE_CHANNEL_ACCESS_TOKEN = PropertiesService.getScriptProperties().getProperty("LINE_CHANNEL_ACCESS_TOKEN");
 var LINE_USER_ID = "U056564d2708941ab8359008895dfff26";
+
+var SLACK_WEBHOOK_URL = PropertiesService.getScriptProperties().getProperty("SLACK_WEBHOOK_URL");
 
 var SUPABASE_URL = "https://xldmgjhllvtwjividgfi.supabase.co";
 var SUPABASE_ANON_KEY = PropertiesService.getScriptProperties().getProperty("SUPABASE_ANON_KEY");
@@ -102,13 +104,14 @@ function processNewEmails_() {
     var result = detectCategory_(title, body);
 
     if (result.confident) {
-      // 自信あり → 直接保存
+      // 自信あり → 直接保存 + Slack通知
       Logger.log("自動振り分け: " + result.category.name + " → " + title);
       saveToObsidian_(title, body, date, result.category);
+      sendSlackSaved_(title, result.category);
     } else {
-      // 迷い → 保留 + LINE質問
-      Logger.log("カテゴリ不明、LINEで質問: " + title);
-      savePendingAndAskLine_(title, body, date);
+      // 迷い → 保留 + Slack/LINEで質問
+      Logger.log("カテゴリ不明、質問送信: " + title);
+      savePendingAndAsk_(title, body, date);
     }
 
     thread.addLabel(label);
@@ -132,6 +135,7 @@ function processPendingEmails_() {
 
     Logger.log("保留処理: " + category.name + " → " + item.title);
     saveToObsidian_(item.title, item.body, new Date(item.email_date), category);
+    sendSlackSaved_(item.title, category);
 
     // 処理済みに更新
     markPendingProcessed_(item.id);
@@ -363,13 +367,99 @@ function sendLineCategoryQuestion_(pendingId, title) {
 }
 
 // ===================================================
+// Slack通知
+// ===================================================
+
+/**
+ * Slack: 保存完了通知
+ */
+function sendSlackSaved_(title, category) {
+  if (!SLACK_WEBHOOK_URL) return;
+
+  var payload = {
+    blocks: [
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: ":white_check_mark: *Obsidianに保存しました*"
+        }
+      },
+      {
+        type: "section",
+        fields: [
+          { type: "mrkdwn", text: "*タイトル*\n" + title },
+          { type: "mrkdwn", text: "*振り分け先*\n`" + category.folder + "/`" }
+        ]
+      }
+    ]
+  };
+
+  postToSlack_(payload);
+}
+
+/**
+ * Slack: カテゴリ選択を質問（ボタン付き）
+ */
+function sendSlackCategoryQuestion_(pendingId, title) {
+  if (!SLACK_WEBHOOK_URL) return;
+
+  var buttons = [];
+  for (var i = 0; i < CATEGORIES.length; i++) {
+    var cat = CATEGORIES[i];
+    var url = VERCEL_BASE_URL + "/api/genspark/categorize?id=" + encodeURIComponent(pendingId) + "&cat=" + encodeURIComponent(cat.name);
+    buttons.push({
+      type: "button",
+      text: { type: "plain_text", text: cat.name },
+      url: url
+    });
+  }
+
+  var payload = {
+    blocks: [
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: ":question: *どこに振り分けますか？*\n" + title
+        }
+      },
+      {
+        type: "actions",
+        elements: buttons
+      }
+    ]
+  };
+
+  postToSlack_(payload);
+}
+
+function postToSlack_(payload) {
+  try {
+    var response = UrlFetchApp.fetch(SLACK_WEBHOOK_URL, {
+      method: "post",
+      contentType: "application/json",
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    });
+    if (response.getResponseCode() === 200) {
+      Logger.log("Slack送信OK");
+    } else {
+      Logger.log("Slackエラー " + response.getResponseCode() + ": " + response.getContentText());
+    }
+  } catch (e) {
+    Logger.log("Slack送信失敗: " + e.message);
+  }
+}
+
+// ===================================================
 // Supabase（保留管理）
 // ===================================================
 
 /**
- * 保留としてSupabaseに保存 + LINEで質問
+ * 保留としてSupabaseに保存 + Slack/LINEで質問
  */
-function savePendingAndAskLine_(title, body, date) {
+function savePendingAndAsk_(title, body, date) {
   var id = generateId_();
 
   var record = {
@@ -396,6 +486,7 @@ function savePendingAndAskLine_(title, body, date) {
     var response = UrlFetchApp.fetch(SUPABASE_URL + "/rest/v1/genspark_pending", options);
     if (response.getResponseCode() === 201) {
       Logger.log("Supabase保存OK: " + id);
+      sendSlackCategoryQuestion_(id, title);
       sendLineCategoryQuestion_(id, title);
     } else {
       Logger.log("Supabase保存エラー: " + response.getContentText());
@@ -586,6 +677,16 @@ function testUncertainCase() {
 /** テスト: LINE送信（実際にLINEに届く） */
 function testLineSend() {
   sendLineCategoryQuestion_("test_" + new Date().getTime(), "来月のスケジュール確認");
+}
+
+/** テスト: Slack保存通知 */
+function testSlackSaved() {
+  sendSlackSaved_("清掃業務に関するフィードバックと今後の対応策", CATEGORIES[3]);
+}
+
+/** テスト: Slackカテゴリ質問 */
+function testSlackQuestion() {
+  sendSlackCategoryQuestion_("test_" + new Date().getTime(), "来月のスケジュール確認");
 }
 
 function buildTestBody_(title, contentLines) {
