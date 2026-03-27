@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import Anthropic from "@anthropic-ai/sdk";
+
+const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN!;
+const SLACK_CHANNEL_ID = process.env.SLACK_CHANNEL_ID || "C0ANJVDA98F";
+
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 /**
  * Genspark カテゴリ選択エンドポイント
@@ -33,6 +39,68 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  // 「指示」カテゴリの場合: Claude API → Slack投稿
+  if (cat === "指示") {
+    try {
+      const plainText = htmlToPlainText(data.body);
+
+      // Claude APIに指示内容を送信
+      const claudeResponse = await anthropic.messages.create({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 4096,
+        system:
+          "あなたはSlack上で指示を受けて作業するアシスタントです。日本語で簡潔に応答してください。",
+        messages: [
+          {
+            role: "user",
+            content: `以下の指示内容を確認し、対応してください。\n\n${plainText}`,
+          },
+        ],
+      });
+
+      const claudeText =
+        claudeResponse.content[0].type === "text"
+          ? claudeResponse.content[0].text
+          : "";
+
+      // Slackに親メッセージを投稿（タイトルと指示内容）
+      const parentMessage = `*📋 新しい指示: ${data.title}*\n\n>>>  ${truncate(plainText, 1500)}`;
+      const parentRes = await postSlackMessage(SLACK_CHANNEL_ID, parentMessage);
+
+      if (parentRes.ok && parentRes.ts) {
+        // Claudeの応答をスレッドに投稿
+        await postSlackMessage(
+          SLACK_CHANNEL_ID,
+          `*🤖 Claude応答:*\n\n${claudeText}`,
+          parentRes.ts
+        );
+
+        // スレッドのtsをSupabaseに保存
+        await supabase
+          .from("genspark_pending")
+          .update({ slack_thread_ts: parentRes.ts })
+          .eq("id", id);
+      }
+
+      return new NextResponse(
+        htmlPage(
+          "指示を送信しました",
+          `「${data.title}」をClaude AIに送信し、Slackに投稿しました。<br>Slackスレッドで会話を継続できます。`
+        ),
+        { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } }
+      );
+    } catch (err) {
+      console.error("指示処理エラー:", err);
+      return new NextResponse(
+        htmlPage(
+          "エラー",
+          `指示の処理中にエラーが発生しました。カテゴリの振り分けは完了しています。`
+        ),
+        { status: 500, headers: { "Content-Type": "text/html; charset=utf-8" } }
+      );
+    }
+  }
+
   return new NextResponse(
     htmlPage(
       "振り分け完了",
@@ -40,6 +108,58 @@ export async function GET(req: NextRequest) {
     ),
     { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } }
   );
+}
+
+// ── ヘルパー関数 ──
+
+/** HTMLタグを除去してプレーンテキストに変換 */
+function htmlToPlainText(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<\/div>/gi, "\n")
+    .replace(/<\/li>/gi, "\n")
+    .replace(/<li[^>]*>/gi, "・")
+    .replace(/<\/h[1-6]>/gi, "\n\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/** 文字列を指定文字数で切り詰め */
+function truncate(str: string, max: number): string {
+  return str.length > max ? str.slice(0, max) + "…" : str;
+}
+
+/** Slack Web APIでメッセージを投稿 */
+async function postSlackMessage(
+  channel: string,
+  text: string,
+  threadTs?: string
+): Promise<{ ok: boolean; ts?: string }> {
+  const body: Record<string, string> = { channel, text };
+  if (threadTs) body.thread_ts = threadTs;
+
+  const res = await fetch("https://slack.com/api/chat.postMessage", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${SLACK_BOT_TOKEN}`,
+      "Content-Type": "application/json; charset=utf-8",
+    },
+    body: JSON.stringify(body),
+  });
+
+  const json = await res.json();
+  if (!json.ok) {
+    console.error("Slack投稿エラー:", json.error);
+  }
+  return { ok: json.ok, ts: json.ts };
 }
 
 function htmlPage(title: string, message: string): string {
