@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
-import Anthropic from "@anthropic-ai/sdk";
 
 const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN!;
 const SLACK_CHANNEL_ID = process.env.SLACK_CHANNEL_ID || "C0ANJVDA98F";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const CLAUDE_PROXY_URL = process.env.CLAUDE_PROXY_URL || "http://162.43.29.31:3002/claude";
+const CLAUDE_PROXY_SECRET = process.env.CLAUDE_PROXY_SECRET || "genspark-claude-proxy-2026";
 
 /**
  * Genspark カテゴリ選択エンドポイント
@@ -44,24 +44,22 @@ export async function GET(req: NextRequest) {
     try {
       const plainText = htmlToPlainText(data.body);
 
-      // Claude APIに指示内容を送信
-      const claudeResponse = await anthropic.messages.create({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 4096,
-        system:
-          "あなたはSlack上で指示を受けて作業するアシスタントです。日本語で簡潔に応答してください。",
-        messages: [
-          {
-            role: "user",
-            content: `以下の指示内容を確認し、対応してください。\n\n${plainText}`,
-          },
-        ],
+      // VPS Claude Codeに指示内容を送信
+      const proxyRes = await fetch(CLAUDE_PROXY_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: `以下の指示内容を確認し、対応してください。\n\n${plainText}`,
+          secret: CLAUDE_PROXY_SECRET,
+        }),
       });
 
-      const claudeText =
-        claudeResponse.content[0].type === "text"
-          ? claudeResponse.content[0].text
-          : "";
+      const proxyJson = await proxyRes.json();
+      if (!proxyRes.ok || proxyJson.error) {
+        throw new Error(proxyJson.error || "Claude proxy error");
+      }
+
+      const claudeText = proxyJson.response || "";
 
       // Slackに親メッセージを投稿（タイトルと指示内容）
       const parentMessage = `*📋 新しい指示: ${data.title}*\n\n>>>  ${truncate(plainText, 1500)}`;

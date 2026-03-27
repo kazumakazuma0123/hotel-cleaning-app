@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
-import Anthropic from "@anthropic-ai/sdk";
 import { createHmac, timingSafeEqual } from "crypto";
 
 const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN!;
 const SLACK_SIGNING_SECRET = process.env.SLACK_SIGNING_SECRET!;
 const SLACK_CHANNEL_ID = process.env.SLACK_CHANNEL_ID || "C0ANJVDA98F";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-const SYSTEM_PROMPT =
-  "あなたはSlack上で指示を受けて作業するアシスタントです。日本語で簡潔に応答してください。";
+const CLAUDE_PROXY_URL = process.env.CLAUDE_PROXY_URL || "http://162.43.29.31:3002/claude";
+const CLAUDE_PROXY_SECRET = process.env.CLAUDE_PROXY_SECRET || "genspark-claude-proxy-2026";
 
 // 処理中のスレッドを追跡して重複処理を防ぐ
 const processingThreads = new Set<string>();
@@ -122,21 +119,25 @@ async function handleSlackThread(threadTs: string, _userText: string) {
     // 元の指示内容をプレーンテキストに変換
     const originalInstruction = htmlToPlainText(pendingData.body);
 
-    // Claude APIの会話履歴を構築
-    const claudeMessages = buildClaudeMessages(threadMessages);
+    // 会話履歴をプロンプトとして構築
+    const conversationContext = buildConversationPrompt(threadMessages, originalInstruction);
 
-    // Claude APIに送信
-    const claudeResponse = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4096,
-      system: `${SYSTEM_PROMPT}\n\n元の指示内容:\n${originalInstruction}`,
-      messages: claudeMessages,
+    // VPS Claude Codeに送信
+    const proxyRes = await fetch(CLAUDE_PROXY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt: conversationContext,
+        secret: CLAUDE_PROXY_SECRET,
+      }),
     });
 
-    const responseText =
-      claudeResponse.content[0].type === "text"
-        ? claudeResponse.content[0].text
-        : "";
+    const proxyJson = await proxyRes.json();
+    if (!proxyRes.ok || proxyJson.error) {
+      throw new Error(proxyJson.error || "Claude proxy error");
+    }
+
+    const responseText = proxyJson.response || "";
 
     // スレッドに返信
     await postSlackMessage(SLACK_CHANNEL_ID, responseText, threadTs);
@@ -210,41 +211,22 @@ interface SlackMessage {
   bot_profile?: Record<string, unknown>;
 }
 
-/** Slackメッセージ履歴からClaude API用のメッセージ配列を構築 */
-function buildClaudeMessages(
-  messages: SlackMessage[]
-): Anthropic.MessageParam[] {
-  const claudeMessages: Anthropic.MessageParam[] = [];
+/** Slackメッセージ履歴からプロンプト文字列を構築 */
+function buildConversationPrompt(
+  messages: SlackMessage[],
+  originalInstruction: string
+): string {
+  let prompt = `あなたはSlack上で指示を受けて作業するアシスタントです。日本語で簡潔に応答してください。\n\n元の指示内容:\n${originalInstruction}\n\n--- 会話履歴 ---\n`;
 
-  // 最初の親メッセージはスキップ（指示内容はsystemに含まれている）
-  // 2番目のメッセージ（Claudeの最初の応答）以降を処理
   for (let i = 1; i < messages.length; i++) {
     const msg = messages[i];
     const isBot = !!msg.bot_id || !!msg.bot_profile;
-    const role: "user" | "assistant" = isBot ? "assistant" : "user";
-
-    // 同じroleが連続する場合はマージ
-    if (
-      claudeMessages.length > 0 &&
-      claudeMessages[claudeMessages.length - 1].role === role
-    ) {
-      const last = claudeMessages[claudeMessages.length - 1];
-      last.content = `${last.content}\n\n${msg.text}`;
-    } else {
-      claudeMessages.push({ role, content: msg.text });
-    }
+    const role = isBot ? "アシスタント" : "ユーザー";
+    prompt += `\n${role}: ${msg.text}\n`;
   }
 
-  // 最後のメッセージがuserであることを保証
-  if (
-    claudeMessages.length === 0 ||
-    claudeMessages[claudeMessages.length - 1].role !== "user"
-  ) {
-    // 空の場合はスキップ（処理しない）
-    return [];
-  }
-
-  return claudeMessages;
+  prompt += "\n上記の会話を踏まえて、最後のユーザーのメッセージに応答してください。";
+  return prompt;
 }
 
 /** HTMLタグを除去してプレーンテキストに変換 */
