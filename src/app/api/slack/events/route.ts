@@ -52,17 +52,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    // スレッド返信のみ（thread_ts があり、かつ ts !== thread_ts）
-    if (!event.thread_ts || event.ts === event.thread_ts) {
-      return NextResponse.json({ ok: true });
-    }
-
     // Bot自身の投稿は無視
     if (event.bot_id || event.bot_profile) {
       return NextResponse.json({ ok: true });
     }
 
-    const threadTs = event.thread_ts as string;
+    // スレッド返信 or チャンネル直接投稿
+    const threadTs = event.thread_ts || event.ts;
 
     // VPSに転送（タイムアウト回避）
     fetch(CLAUDE_PROXY_URL.replace("/claude", "/slack-reply"), {
@@ -71,6 +67,8 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         thread_ts: threadTs,
         channel: event.channel,
+        text: event.text,
+        is_new: !event.thread_ts,
         secret: CLAUDE_PROXY_SECRET,
       }),
     }).catch(() => {});
