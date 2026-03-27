@@ -90,11 +90,12 @@ export async function GET(req: NextRequest) {
         { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } }
       );
     } catch (err) {
-      console.error("指示処理エラー:", err);
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error("指示処理エラー:", errMsg, err);
       return new NextResponse(
         htmlPage(
           "エラー",
-          `指示の処理中にエラーが発生しました。カテゴリの振り分けは完了しています。`
+          `指示の処理中にエラーが発生しました。<br><small>${errMsg}</small>`
         ),
         { status: 500, headers: { "Content-Type": "text/html; charset=utf-8" } }
       );
