@@ -31,9 +31,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ challenge: payload.challenge });
   }
 
-  // ── イベント処理 ──
+  // ── デバッグ: 全イベントをSlackに投稿 ──
   if (payload.type === "event_callback") {
     const event = payload.event;
+    console.log("Slack event received:", JSON.stringify({ type: event.type, channel: event.channel, thread_ts: event.thread_ts, ts: event.ts, bot_id: event.bot_id, subtype: event.subtype, text: (event.text || "").substring(0, 50) }));
 
     // message イベントのみ処理
     if (event.type !== "message" && event.type !== "app_mention") {
@@ -47,6 +48,7 @@ export async function POST(req: NextRequest) {
 
     // 対象チャンネルのみ
     if (event.channel !== SLACK_CHANNEL_ID) {
+      console.log("Channel mismatch:", event.channel, "!==", SLACK_CHANNEL_ID);
       return NextResponse.json({ ok: true });
     }
 
@@ -62,13 +64,15 @@ export async function POST(req: NextRequest) {
 
     const threadTs = event.thread_ts as string;
 
+    // 受信確認: リアクションを付ける
+    addReaction(event.channel, event.ts, "eyes").catch(() => {});
+
     // 重複処理を防ぐ
     if (processingThreads.has(threadTs)) {
       return NextResponse.json({ ok: true });
     }
 
-    // 3秒以内に200を返す（重い処理はバックグラウンドで）
-    // Next.js の waitUntil が利用可能な場合はそちらを使う
+    // バックグラウンドで処理
     const backgroundTask = handleSlackThread(threadTs, event.text);
 
     // @ts-expect-error - waitUntil is available in Vercel Edge/Serverless
@@ -76,7 +80,6 @@ export async function POST(req: NextRequest) {
       // @ts-expect-error
       globalThis.waitUntil(backgroundTask);
     } else {
-      // fallback: fire and forget
       backgroundTask.catch((err) =>
         console.error("バックグラウンド処理エラー:", err)
       );
@@ -272,4 +275,16 @@ async function postSlackMessage(
     console.error("Slack投稿エラー:", json.error);
   }
   return { ok: json.ok, ts: json.ts };
+}
+
+/** リアクションを付ける */
+async function addReaction(channel: string, timestamp: string, name: string) {
+  await fetch("https://slack.com/api/reactions.add", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${SLACK_BOT_TOKEN}`,
+      "Content-Type": "application/json; charset=utf-8",
+    },
+    body: JSON.stringify({ channel, timestamp, name }),
+  });
 }
