@@ -64,26 +64,16 @@ export async function POST(req: NextRequest) {
 
     const threadTs = event.thread_ts as string;
 
-    // 受信確認: リアクションを付ける
-    addReaction(event.channel, event.ts, "eyes").catch(() => {});
-
-    // 重複処理を防ぐ
-    if (processingThreads.has(threadTs)) {
-      return NextResponse.json({ ok: true });
-    }
-
-    // バックグラウンドで処理
-    const backgroundTask = handleSlackThread(threadTs, event.text);
-
-    // @ts-expect-error - waitUntil is available in Vercel Edge/Serverless
-    if (typeof globalThis.waitUntil === "function") {
-      // @ts-expect-error
-      globalThis.waitUntil(backgroundTask);
-    } else {
-      backgroundTask.catch((err) =>
-        console.error("バックグラウンド処理エラー:", err)
-      );
-    }
+    // VPSに転送（タイムアウト回避）
+    fetch(CLAUDE_PROXY_URL.replace("/claude", "/slack-reply"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        thread_ts: threadTs,
+        channel: event.channel,
+        secret: CLAUDE_PROXY_SECRET,
+      }),
+    }).catch(() => {});
 
     return NextResponse.json({ ok: true });
   }
