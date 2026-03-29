@@ -60,18 +60,26 @@ export async function POST(req: NextRequest) {
     // スレッド返信 or チャンネル直接投稿
     const threadTs = event.thread_ts || event.ts;
 
-    // VPSに転送（タイムアウト回避）
-    fetch(CLAUDE_PROXY_URL.replace("/claude", "/slack-reply"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        thread_ts: threadTs,
-        channel: event.channel,
-        text: event.text,
-        is_new: !event.thread_ts,
-        secret: CLAUDE_PROXY_SECRET,
-      }),
-    }).catch(() => {});
+    // VPSに転送（即時応答を待つ）
+    try {
+      const vpsUrl = CLAUDE_PROXY_URL.replace("/claude", "/slack-reply");
+      console.log("Forwarding to VPS:", vpsUrl);
+      const vpsRes = await fetch(vpsUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          thread_ts: threadTs,
+          channel: event.channel,
+          text: event.text,
+          is_new: !event.thread_ts,
+          secret: CLAUDE_PROXY_SECRET,
+        }),
+        signal: AbortSignal.timeout(5000),
+      });
+      console.log("VPS response:", vpsRes.status);
+    } catch (e) {
+      console.error("VPS forward error:", e);
+    }
 
     return NextResponse.json({ ok: true });
   }
