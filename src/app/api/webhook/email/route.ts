@@ -169,7 +169,7 @@ async function handleNewBooking(body: string) {
             total_nights,
             status: "confirmed",
             updated_at: new Date().toISOString(),
-        });
+        }, { onConflict: "reservation_number" });
 
         if (error) {
             console.error("DB Update Error (New):", error.message);
