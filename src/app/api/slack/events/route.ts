@@ -5,6 +5,8 @@ import { createHmac, timingSafeEqual } from "crypto";
 const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN!;
 const SLACK_SIGNING_SECRET = process.env.SLACK_SIGNING_SECRET!;
 const SLACK_CHANNEL_ID = process.env.SLACK_CHANNEL_ID || "C0ANJVDA98F";
+const SLACK_HOTEL_CHANNEL_ID = process.env.SLACK_HOTEL_CHANNEL_ID || "C0AQ0865K8U";
+const ALLOWED_CHANNELS = new Set([SLACK_CHANNEL_ID, SLACK_HOTEL_CHANNEL_ID]);
 
 const CLAUDE_PROXY_URL = process.env.CLAUDE_PROXY_URL || "http://162.43.29.31:3002/claude";
 const CLAUDE_PROXY_SECRET = process.env.CLAUDE_PROXY_SECRET || "genspark-claude-proxy-2026";
@@ -47,8 +49,8 @@ export async function POST(req: NextRequest) {
     }
 
     // 対象チャンネルのみ
-    if (event.channel !== SLACK_CHANNEL_ID) {
-      console.log("Channel mismatch:", event.channel, "!==", SLACK_CHANNEL_ID);
+    if (!ALLOWED_CHANNELS.has(event.channel)) {
+      console.log("Channel not allowed:", event.channel, "allowed:", [...ALLOWED_CHANNELS]);
       return NextResponse.json({ ok: true });
     }
 
