@@ -8,8 +8,10 @@ const SLACK_CHANNEL_ID = process.env.SLACK_CHANNEL_ID || "C0ANJVDA98F";
 const SLACK_HOTEL_CHANNEL_ID = process.env.SLACK_HOTEL_CHANNEL_ID || "C0AQ0865K8U";
 const ALLOWED_CHANNELS = new Set([SLACK_CHANNEL_ID, SLACK_HOTEL_CHANNEL_ID]);
 
-const CLAUDE_PROXY_URL = process.env.CLAUDE_PROXY_URL || "http://REDACTED_VPS_IP:3002/claude";
 const CLAUDE_PROXY_SECRET = process.env.CLAUDE_PROXY_SECRET || "REDACTED_PROXY_SECRET";
+// VPS:3002 はパケットフィルター未開放のため、port 3001（モニターサーバー）の /api/proxy 経由で中継
+const VPS_MONITOR_URL = process.env.VPS_MONITOR_URL || "http://REDACTED_VPS_IP:3001";
+const VPS_MONITOR_KEY = process.env.VPS_MONITOR_KEY || "changeme";
 
 // 処理中のスレッドを追跡して重複処理を防ぐ
 const processingThreads = new Set<string>();
@@ -62,19 +64,24 @@ export async function POST(req: NextRequest) {
     // スレッド返信 or チャンネル直接投稿
     const threadTs = event.thread_ts || event.ts;
 
-    // VPSに転送（即時応答を待つ）
+    // VPSに転送（port 3001 /api/proxy 経由で localhost:3002/slack-reply に中継）
     try {
-      const vpsUrl = CLAUDE_PROXY_URL.replace("/claude", "/slack-reply");
-      console.log("Forwarding to VPS:", vpsUrl);
-      const vpsRes = await fetch(vpsUrl, {
+      console.log("Forwarding to VPS via :3001 proxy");
+      const vpsRes = await fetch(`${VPS_MONITOR_URL}/api/proxy`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": VPS_MONITOR_KEY,
+        },
         body: JSON.stringify({
-          thread_ts: threadTs,
-          channel: event.channel,
-          text: event.text,
-          is_new: !event.thread_ts,
-          secret: CLAUDE_PROXY_SECRET,
+          path: "/slack-reply",
+          body: {
+            thread_ts: threadTs,
+            channel: event.channel,
+            text: event.text,
+            is_new: !event.thread_ts,
+            secret: CLAUDE_PROXY_SECRET,
+          },
         }),
         signal: AbortSignal.timeout(5000),
       });
