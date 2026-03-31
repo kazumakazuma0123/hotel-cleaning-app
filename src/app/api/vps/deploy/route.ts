@@ -57,6 +57,7 @@ export async function POST(req: NextRequest) {
     if (action === "bootstrap") {
       // 初回: /deploy エンドポイントがまだない旧版に対して
       // /claude 経由でClaude Codeにファイル書き込み＋再起動を依頼
+      // Fire-and-forget: VPSにリクエストを送ったら即return（Vercel関数タイムアウト対策）
       const prompt = `以下の手順を正確に実行してください:
 
 1. /root/claude-proxy-server.js を以下の内容で上書きしてください
@@ -66,14 +67,22 @@ export async function POST(req: NextRequest) {
 ファイル内容:
 ${content}`;
 
-      const res = await fetch(proxyBase + "/claude", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ secret: CLAUDE_PROXY_SECRET, prompt }),
-        signal: AbortSignal.timeout(120000),
+      // 3秒でVPSにリクエスト送信後、即return
+      // VPS側はリクエスト受信後にClaude Codeを非同期実行するため処理は続く
+      try {
+        await fetch(proxyBase + "/claude", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ secret: CLAUDE_PROXY_SECRET, prompt }),
+          signal: AbortSignal.timeout(5000),
+        });
+      } catch {
+        // タイムアウトは想定内（Claude処理は60秒以上かかる）
+      }
+      return NextResponse.json({
+        ok: true,
+        message: "bootstrap started — VPS will process in background (~60s). Check with restart action after.",
       });
-      const json = await res.json();
-      return NextResponse.json(json);
     }
 
     return NextResponse.json({ error: "unknown action" }, { status: 400 });
