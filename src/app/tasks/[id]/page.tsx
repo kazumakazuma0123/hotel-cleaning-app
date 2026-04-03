@@ -96,9 +96,12 @@ export default function RoomTaskPage({ params }: { params: Promise<{ id: string 
         setShowSuccess(true);
         setTimeout(() => {
             setShowSuccess(false);
-            // When moving to cleaned, ensure all items are marked as checked in DB
-            const checkedItemIds = newStatus === "cleaned" ? items.map(i => i.id) : items.filter(i => i.checked).map(i => i.id);
+            // Reset checklist when starting or returning to before-cleaning; mark all when completing cleaning
+            const checkedItemIds = newStatus === "before-cleaning" || newStatus === "cleaning" ? [] : newStatus === "cleaned" ? items.map(i => i.id) : items.filter(i => i.checked).map(i => i.id);
             updateRoomStatus(id, newStatus, checkedItemIds);
+            if (newStatus === "before-cleaning" || newStatus === "cleaning") {
+                setItems(prev => prev.map(item => ({ ...item, checked: false })));
+            }
             if (shouldRedirect) {
                 router.push("/");
             }
