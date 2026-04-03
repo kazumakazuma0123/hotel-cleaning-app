@@ -12,6 +12,7 @@ const CLAUDE_PROXY_SECRET = process.env.CLAUDE_PROXY_SECRET || "REDACTED_PROXY_S
 // VPS:3002 はパケットフィルター未開放のため、port 3001（モニターサーバー）の /api/proxy 経由で中継
 const VPS_MONITOR_URL = process.env.VPS_MONITOR_URL || "http://REDACTED_VPS_IP:3001";
 const VPS_MONITOR_KEY = process.env.VPS_MONITOR_KEY || "changeme";
+const CLAUDE_PROXY_URL = `${VPS_MONITOR_URL}/api/proxy`;
 
 // 処理中のスレッドを追跡して重複処理を防ぐ
 const processingThreads = new Set<string>();
