@@ -42,19 +42,20 @@ export default function RoomTaskPage({ params }: { params: Promise<{ id: string 
     // Initialize items from room data
     useEffect(() => {
         if (!room) return;
-        
-        const checkedItemIds = room.checked_items || [];
+
+        // before-cleaning: always force empty checklist (prevent stale data from previous cycle)
+        const checkedItemIds = room.status === "before-cleaning" ? [] : (room.checked_items || []);
         const isBasicallyDone = ["cleaned", "inspected", "occupied"].includes(room.status);
-        
+
         // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing with Supabase room data
         setItems(prev => {
             const hasChanges = prev.some(item => {
                 const shouldBeChecked = checkedItemIds.includes(item.id) || isBasicallyDone;
                 return item.checked !== shouldBeChecked;
             });
-            
+
             if (!hasChanges) return prev;
-            
+
             return prev.map(item => ({
                 ...item,
                 checked: checkedItemIds.includes(item.id) || isBasicallyDone
