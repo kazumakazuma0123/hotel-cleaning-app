@@ -47,3 +47,14 @@ npm run lint  # ESLint実行
 - モバイルファーストで設計する
 - Supabase Realtimeでリアルタイム同期している箇所あり
 - 環境変数（NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY）は `.env.local` で管理
+
+## コミット・プッシュ運用（Vercelビルド節約ルール）
+
+Vercel Proのビルド時間を節約するため、**pushは必ずまとめて1回にする**。
+
+- commitは従来どおり細かく切ってよい（履歴の可読性のため）
+- **push は作業セッションの最後に1回だけ** 実行する
+- 「1つ直したらすぐpush」は禁止。複数のcommitを貯めてから最後にまとめてpush
+- 例外: hotfix等で即座にprodへ反映が必要な場合のみ、都度pushしてよい
+- 理由: push毎にVercelビルドが走るため、commit数ではなくpush数が課金対象
+- `vercel.json` の `ignoreCommand` により src/ や依存関係を触らない変更ではビルドがスキップされるが、これはあくまで安全網。基本はpushをまとめること
