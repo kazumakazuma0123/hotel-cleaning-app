@@ -4,8 +4,8 @@ import { supabase } from "@/lib/supabase";
 const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN!;
 const SLACK_CHANNEL_ID = process.env.SLACK_CHANNEL_ID || "C0ANJVDA98F";
 
-const CLAUDE_PROXY_URL = process.env.CLAUDE_PROXY_URL || "http://REDACTED_VPS_IP:3002/claude";
-const CLAUDE_PROXY_SECRET = process.env.CLAUDE_PROXY_SECRET || "REDACTED_PROXY_SECRET";
+const CLAUDE_PROXY_URL = process.env.CLAUDE_PROXY_URL!;
+const CLAUDE_PROXY_SECRET = process.env.CLAUDE_PROXY_SECRET!;
 
 /**
  * Genspark カテゴリ選択エンドポイント

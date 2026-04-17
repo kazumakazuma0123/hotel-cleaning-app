@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const CLAUDE_PROXY_URL =
-  process.env.CLAUDE_PROXY_URL || "http://REDACTED_VPS_IP:3002";
-const CLAUDE_PROXY_SECRET =
-  process.env.CLAUDE_PROXY_SECRET || "REDACTED_PROXY_SECRET";
-const DEPLOY_SECRET = process.env.DEPLOY_SECRET || "REDACTED_DEPLOY_SECRET";
+const CLAUDE_PROXY_URL = process.env.CLAUDE_PROXY_URL!;
+const CLAUDE_PROXY_SECRET = process.env.CLAUDE_PROXY_SECRET!;
+const DEPLOY_SECRET = process.env.DEPLOY_SECRET!;
 
 /**
  * VPS デプロイリレー

@@ -8,10 +8,10 @@ const SLACK_CHANNEL_ID = process.env.SLACK_CHANNEL_ID || "C0ANJVDA98F";
 const SLACK_HOTEL_CHANNEL_ID = process.env.SLACK_HOTEL_CHANNEL_ID || "C0AQ0865K8U";
 const ALLOWED_CHANNELS = new Set([SLACK_CHANNEL_ID, SLACK_HOTEL_CHANNEL_ID]);
 
-const CLAUDE_PROXY_SECRET = process.env.CLAUDE_PROXY_SECRET || "REDACTED_PROXY_SECRET";
+const CLAUDE_PROXY_SECRET = process.env.CLAUDE_PROXY_SECRET!;
 // VPS:3002 はパケットフィルター未開放のため、port 3001（モニターサーバー）の /api/proxy 経由で中継
-const VPS_MONITOR_URL = process.env.VPS_MONITOR_URL || "http://REDACTED_VPS_IP:3001";
-const VPS_MONITOR_KEY = process.env.VPS_MONITOR_KEY || "changeme";
+const VPS_MONITOR_URL = process.env.VPS_MONITOR_URL!;
+const VPS_MONITOR_KEY = process.env.VPS_MONITOR_KEY!;
 const CLAUDE_PROXY_URL = `${VPS_MONITOR_URL}/api/proxy`;
 
 // 処理中のスレッドを追跡して重複処理を防ぐ

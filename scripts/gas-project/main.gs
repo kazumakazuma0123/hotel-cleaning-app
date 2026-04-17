@@ -1,6 +1,6 @@
 // ========== 設定 ==========
 var WEBHOOK_URL = "https://hotel-cleaning-app.vercel.app/api/webhook/email";
-var WEBHOOK_SECRET = "REDACTED_WEBHOOK_SECRET";
+var WEBHOOK_SECRET = "YOUR_WEBHOOK_SECRET"; // GASのスクリプトプロパティから取得するか、ここに設定
 var LABEL_PROCESSED = "webhook-processed";
 // ==========================
 

@@ -12,8 +12,6 @@ jobs:
     steps:
       - name: Ping Supabase Database
         run: |
-          # Note: Supabase Anon Key is designed to be public-facing. 
-          # We include it here directly to ensure the keep-alive works without manual secret configuration.
-          curl -X GET "https://xldmgjhllvtwjividgfi.supabase.co/rest/v1/tasks?select=id&limit=1" \
-          -H "apikey: REDACTED_SUPABASE_KEY" \
-          -H "Authorization: Bearer REDACTED_SUPABASE_KEY"
+          curl -X GET "${{ secrets.SUPABASE_URL }}/rest/v1/tasks?select=id&limit=1" \
+          -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+          -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}"

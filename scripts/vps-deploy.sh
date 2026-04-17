@@ -11,8 +11,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-VPS_URL="http://REDACTED_VPS_IP:3001"
-API_KEY="changeme"
+VPS_URL="${VPS_MONITOR_URL:?環境変数 VPS_MONITOR_URL を設定してください（例: http://xxx.xxx.xxx.xxx:3001）}"
+API_KEY="${VPS_API_KEY:?環境変数 VPS_API_KEY を設定してください}"
 
 ACTION="${1:-deploy}"
 
