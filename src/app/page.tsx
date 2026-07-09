@@ -25,8 +25,46 @@ export default function Home() {
     nights: number | null
   }>>({});
 
+  type UnassignedBooking = {
+    id: string;
+    checkInDate: string;
+    channel: string | null;
+    roomType: string | null;
+    guests: number | null;
+  };
+  const [unassignedBookings, setUnassignedBookings] = useState<UnassignedBooking[]>([]);
+
   const today = new Date();
   const dateString = `${today.getMonth() + 1}月${today.getDate()}日`;
+
+  // 部屋未割当の予約を取得
+  async function fetchUnassignedBookings() {
+    const { data, error } = await supabase
+      .from("bookings")
+      .select("id, check_in_datetime, channel, room_type, guest_count")
+      .is("room_id", null)
+      .eq("status", "confirmed")
+      .gte("check_in_datetime", new Date().toISOString())
+      .order("check_in_datetime", { ascending: true });
+
+    if (error) {
+      console.error("Failed to fetch unassigned bookings:", error.message);
+      return;
+    }
+
+    setUnassignedBookings(
+      (data || []).map((b) => {
+        const date = new Date(b.check_in_datetime);
+        return {
+          id: b.id,
+          checkInDate: `${date.getMonth() + 1}/${date.getDate()}`,
+          channel: b.channel,
+          roomType: b.room_type,
+          guests: b.guest_count,
+        };
+      })
+    );
+  }
 
   // Fetch bookings info
   useEffect(() => {
@@ -82,11 +120,13 @@ export default function Home() {
     }
 
     fetchInfo();
+    fetchUnassignedBookings();
 
     const channel = supabase
       .channel("bookings-all-sync")
       .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, () => {
         fetchInfo();
+        fetchUnassignedBookings();
       })
       .subscribe();
 
@@ -112,6 +152,33 @@ export default function Home() {
         <p className="text-[#333] tracking-wider mb-2 font-medium text-[16px]">{dateString}</p>
         <h1 className="text-[22px] font-medium text-black tracking-[0.2em] mb-4">おはようございます</h1>
       </div>
+
+      {/* Unassigned Bookings */}
+      {unassignedBookings.length > 0 && (
+        <div className="flex flex-col gap-3 px-1 pb-6 max-w-[500px] mx-auto">
+          <h2 className="text-[13px] font-bold text-[#aa8d65] tracking-wide">
+            ⚠️ 部屋未割当の予約
+          </h2>
+          {unassignedBookings.map((b) => (
+            <div
+              key={b.id}
+              className="bg-white rounded-[16px] shadow-[0_2px_12px_rgba(0,0,0,0.06)] px-4 py-3 flex items-center justify-between"
+            >
+              <div className="flex flex-col gap-1">
+                <span className="text-[15px] font-medium text-[#333]">{b.checkInDate}〜</span>
+                <span className="text-[12px] text-[#888888]">
+                  {b.channel || "チャネル不明"} / {b.roomType || "部屋タイプ不明"}
+                </span>
+              </div>
+              {b.guests && (
+                <span className="text-[11px] font-bold text-[#2f667c] bg-[#e8f0f4] px-3 py-1 rounded-full">
+                  {b.guests}名
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Room Cards List */}
       <div className="flex flex-col gap-5 px-1 pb-10 max-w-[500px] mx-auto">
