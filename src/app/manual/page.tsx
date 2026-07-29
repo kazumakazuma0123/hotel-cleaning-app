@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookOpen, MapPin, ShowerHead, Bed } from "lucide-react";
+import { BookOpen, Building2, MapPin, ShowerHead, Bed } from "lucide-react";
 
 export default function ManualIndex() {
     return (
@@ -23,7 +23,18 @@ export default function ManualIndex() {
                             </div>
                             <div>
                                 <h3 className="text-xl font-bold text-black tracking-tight mb-1">Villa</h3>
-                                <p className="text-sm font-medium text-gray-500">標準的な客室の清掃手順</p>
+                                <p className="text-sm font-medium text-gray-500">ヴィラ（001・002・005）の清掃手順</p>
+                            </div>
+                        </div>
+                    </Link>
+                    <Link href="/manual/main" className="bg-[#f2f2f2] p-6 rounded-[32px] flex items-center justify-between active:bg-gray-200 transition-colors">
+                        <div className="flex items-center gap-5">
+                            <div className="bg-white text-black p-4 rounded-2xl">
+                                <Building2 className="w-6 h-6" strokeWidth={2} />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold text-black tracking-tight mb-1">本館</h3>
+                                <p className="text-sm font-medium text-gray-500">本館（101・102・201・202・203）の清掃手順</p>
                             </div>
                         </div>
                     </Link>

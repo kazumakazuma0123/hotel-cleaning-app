@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "sync:rules": "bash scripts/sync-rules.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",

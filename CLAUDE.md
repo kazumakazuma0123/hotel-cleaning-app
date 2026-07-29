@@ -37,10 +37,33 @@
 ## 開発コマンド
 
 ```bash
-npm run dev   # 開発サーバー起動
-npm run build # ビルド
-npm run lint  # ESLint実行
+npm run dev         # 開発サーバー起動
+npm run build       # ビルド
+npm run lint        # ESLint実行
+npm run sync:rules  # Obsidianの清掃ルールmdをアプリに同期
 ```
+
+## 清掃ルール（Villa Rules）の編集フロー
+
+`/manual/villa` ページの内容は markdown ファイルで管理されている。
+
+- **真のソース**: `/Users/kazuma/Downloads/obsidian_project/hotel-sui/03_清掃管理/villa-rules.md`
+- **アプリ側コピー**: `src/content/villa-rules.md`（ビルド時に読み込まれる）
+- **bizdev mirror**: `hotel/hotel-sui/アクション/清掃/villa-rules.md`
+
+### 編集手順
+1. Obsidian で `villa-rules.md` を編集
+2. アプリディレクトリで `npm run sync:rules` を実行（Obsidian → src/content/ にコピー）
+3. `git commit && git push` で Vercel に反映
+
+### markdown 記法
+- `## NN タイトル` → 番号付きセクション（NNはセクション番号）
+- `### サブタイトル` → サブ見出し
+- `- bullet` → 箇条書き
+- `==text==` → グレー背景の強調テキスト
+- `![キャプション](/images/manual/xxx.jpg)` → 画像（直前のサブセクションに紐付く）
+
+パーサ実装: `src/lib/parseVillaRules.ts`
 
 ## 開発時の注意
 
