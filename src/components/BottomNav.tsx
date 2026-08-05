@@ -3,7 +3,10 @@ import { Home, ClipboardList, BookOpen } from "lucide-react";
 
 export function BottomNav() {
     return (
-        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] z-50 bg-[#fdfdfd] border-t border-gray-100 pb-safe">
+        <nav
+            className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] z-50 bg-[#fdfdfd] border-t border-gray-100"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 8px)" }}
+        >
             <div className="flex justify-around items-center h-16 max-w-md mx-auto">
                 <Link href="/" className="flex flex-col items-center justify-center w-full h-full text-gray-400 hover:text-black active:text-black transition-colors">
                     <Home className="w-6 h-6 mb-1" strokeWidth={1.5} />
