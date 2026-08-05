@@ -299,11 +299,22 @@ export default function TasksIndex() {
 
     return (
         <div className="p-5 pb-24 min-h-screen bg-[#f7f7f7] pt-14">
-            <header className="mb-8 pt-2">
-                <p className="text-xs font-semibold text-gray-400 mb-1 tracking-wider uppercase">Today&apos;s To Do</p>
-                <h1 className="text-[28px] font-bold tracking-tight text-[#111]">
-                    タスク一覧
-                </h1>
+            <header className="mb-8 pt-2 flex items-end justify-between gap-3">
+                <div>
+                    <p className="text-xs font-semibold text-gray-400 mb-1 tracking-wider uppercase">Today&apos;s To Do</p>
+                    <h1 className="text-[28px] font-bold tracking-tight text-[#111]">
+                        タスク一覧
+                    </h1>
+                </div>
+                <button
+                    onClick={() => setIsAddingTask(true)}
+                    aria-label="タスクを追加"
+                    className="shrink-0 flex items-center gap-1.5 bg-[#111] text-white rounded-full pl-3 pr-4 py-2.5 text-sm font-bold active:bg-gray-800 disabled:opacity-40 transition-colors shadow-[0_2px_8px_rgba(0,0,0,0.12)]"
+                    disabled={isAddingTask}
+                >
+                    <Plus className="w-4 h-4" strokeWidth={2.5} />
+                    追加
+                </button>
             </header>
 
             {loading ? (
@@ -312,21 +323,8 @@ export default function TasksIndex() {
                 </div>
             ) : (
                 <div className="space-y-4">
-                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                        <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-                            {tasks.map((task) => (
-                                <SortableTaskCard
-                                    key={task.id}
-                                    task={task}
-                                    onToggle={toggleTask}
-                                    onSelect={setSelectedTask}
-                                />
-                            ))}
-                        </SortableContext>
-                    </DndContext>
-
-                    {/* Add Task Card / Input */}
-                    {isAddingTask ? (
+                    {/* Add Task Form (top) */}
+                    {isAddingTask && (
                         <div className="bg-white rounded-2xl p-5 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
                             <input
                                 type="text"
@@ -388,18 +386,25 @@ export default function TasksIndex() {
                                 </div>
                             </div>
                         </div>
-                    ) : (
-                        <div
-                            onClick={() => setIsAddingTask(true)}
-                            className="bg-white/50 border-2 border-dashed border-gray-200 rounded-2xl p-4 active:scale-[0.98] transition-all flex items-center justify-center gap-3 cursor-pointer hover:bg-white"
-                        >
-                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                                <Plus className="w-5 h-5 text-gray-500" strokeWidth={2.5} />
-                            </div>
-                            <span className="font-bold text-[15px] text-gray-500 tracking-wide">
-                                タスクを追加
-                            </span>
-                        </div>
+                    )}
+
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                        <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                            {tasks.map((task) => (
+                                <SortableTaskCard
+                                    key={task.id}
+                                    task={task}
+                                    onToggle={toggleTask}
+                                    onSelect={setSelectedTask}
+                                />
+                            ))}
+                        </SortableContext>
+                    </DndContext>
+
+                    {tasks.length === 0 && !isAddingTask && (
+                        <p className="text-center text-sm text-gray-400 py-10">
+                            タスクはありません。右上の「追加」から作成できます。
+                        </p>
                     )}
                 </div>
             )}
