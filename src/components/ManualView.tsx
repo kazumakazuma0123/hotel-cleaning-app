@@ -65,7 +65,13 @@ export default function ManualView({ contentFile, title }: ManualViewProps) {
                                             }`}
                                         >
                                             {item.bullets.map((bullet, bi) => (
-                                                <li key={bi}>{renderInline(bullet)}</li>
+                                                <li
+                                                    key={bi}
+                                                    className={bullet.depth > 0 ? "list-[circle] text-gray-400" : ""}
+                                                    style={bullet.depth > 0 ? { marginLeft: bullet.depth * 20 } : undefined}
+                                                >
+                                                    {renderInline(bullet.tokens)}
+                                                </li>
                                             ))}
                                         </ul>
                                     )}

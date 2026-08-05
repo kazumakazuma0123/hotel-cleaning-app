@@ -2,9 +2,15 @@ export type InlineToken =
     | { type: "text"; value: string }
     | { type: "highlight"; value: string };
 
+export type Bullet = {
+    tokens: InlineToken[];
+    /** 字下げの深さ（0 = トップレベル、1 = サブ項目 …） */
+    depth: number;
+};
+
 export type SubsectionItem = {
     title: string;
-    bullets: InlineToken[][];
+    bullets: Bullet[];
     images: { src: string; caption: string }[];
 };
 
@@ -72,9 +78,12 @@ export function parseVillaRules(markdown: string): VillaRules {
             continue;
         }
 
-        const bullet = line.match(/^-\s+(.+)$/);
+        const bullet = line.match(/^(\s*)-\s+(.+)$/);
         if (bullet && currentItem) {
-            currentItem.bullets.push(parseInline(bullet[1]));
+            // タブ or スペース2つを1段の字下げとして深さを算出（最大2段）
+            const indentWidth = bullet[1].replace(/\t/g, "  ").length;
+            const depth = Math.min(Math.floor(indentWidth / 2), 2);
+            currentItem.bullets.push({ tokens: parseInline(bullet[2]), depth });
             continue;
         }
 
