@@ -260,10 +260,15 @@ export default function TasksIndex() {
                 }
             }
 
+            // 一番上に追加するため、既存の最小 sort_order より小さい値を採用
+            const topSortOrder = tasks.length > 0
+                ? Math.min(...tasks.map((t) => t.sort_order)) - 1
+                : 0;
+
             const { data, error } = await supabase.from("tasks").insert({
                 title: newTaskTitle.trim(),
                 status: "pending",
-                sort_order: tasks.length,
+                sort_order: topSortOrder,
                 image_url: imageUrl,
             }).select().single();
 

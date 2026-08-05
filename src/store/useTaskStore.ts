@@ -48,7 +48,7 @@ export const useTaskStore = create<TaskStore>()(
 
             addTaskOptimistic: (task) =>
                 set((state) => ({
-                    tasks: [...state.tasks, task],
+                    tasks: [task, ...state.tasks],
                 })),
 
             removeTaskOptimistic: (id) =>
